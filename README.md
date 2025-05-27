@@ -1,6 +1,6 @@
 # Project_Eclipse
 
-![Game Screenshot](Project_Eclipse.png)
+![Project_Eclipse](https://github.com/user-attachments/assets/7bc18adb-415a-4165-b349-fe85915d98a0)
 
 # 🌑 Project_Eclipse
 
