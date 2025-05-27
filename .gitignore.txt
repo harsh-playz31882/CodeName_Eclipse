@@ -1,0 +1,15 @@
+# Ignore Unreal Engine build files
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+.vscode/
+*.sln
+*.opensdf
+*.log
+*.tmp
+Build/
+
+# Optional: Ignore large asset files if you're not collaborating
+*.uasset
+*.umap

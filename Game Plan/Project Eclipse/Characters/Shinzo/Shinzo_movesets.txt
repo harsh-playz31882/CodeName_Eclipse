@@ -1,0 +1,59 @@
+Basic Attacks
+Light Slash – A quick katana swipe for fast pokes.
+
+Heavy Slash – A slightly delayed but powerful downward katana strike.
+
+Spin Slash – A rapid 360° katana attack to push back opponents.
+
+Quick Jab – A forward katana thrust that interrupts attacks.
+
+Kick Attacks
+Lower Kick – A sweeping low kick to trip enemies.
+
+Upper Kick – A fast kick targeting the opponent’s chin.
+
+Back Kick – A backward thrust kick to create space.
+
+Jump Forward Kick – A mid-air spinning kick for aerial offense.
+
+Throw Techniques
+Silent Suplex – Shinzo grabs and flips his opponent backward.
+
+Shadow Strike Throw – Disappears for a second and reappears behind the opponent for a neck throw.
+
+Special Throw - Phantom Reversal – Counters an enemy’s attack by vanishing briefly, then throwing them down.
+
+Weapon-Based Attacks (Blade of Dimensions & 3-Bladed Shuriken)
+Katana: Blade of Dimensions
+Dimensional Slash – A lightning-fast strike with a brief visual distortion effect.
+
+Dual-Step Slash – Dashes twice while slashing in rapid succession.
+
+Shadow Cut – A delayed but nearly unavoidable katana strike with a feint animation.
+
+Piercing Fang – A high-speed thrust that deals massive damage if perfectly timed.
+
+Shuriken Techniques (3-Bladed Shuriken)
+Rapid Shuriken Toss – Throws three spinning shuriken at high speed.
+
+Boomerang Shuriken – A curved throw that returns to Shinzo.
+
+Phantom Shuriken – Throws a slow-moving shuriken that momentarily stuns upon impact.
+
+Shuriken Barrage (Special) – Throws multiple shurikens in quick succession to force the enemy into defense.
+
+Special Moves
+Silent Shadow Dash – Instantly dodges an attack with a brief phase-out animation.
+
+Moonlit Vanish – Teleports a short distance behind the opponent for a surprise attack.
+
+Piercing Void Strike – A high-speed katana thrust that ignores blocks if charged.
+
+Phantom Step – A unique feint move that cancels into another attack or throw.
+
+Flickering Mirage – Creates a brief afterimage clone to confuse opponents.
+
+**Ultimate Move – “Dimensional Rift Barrage”
+Effect: The opponent enters slow motion for 5 seconds, while Shinzo performs a blinding series of slashes from all angles.
+
+Final Hit: The last slash distorts reality momentarily before delivering a powerful finishing blow.
