@@ -19,5 +19,3 @@
 - **Blender** – For character and environment modeling.
 - **C++ / Blueprint** – Core game logic and mechanics.
 - **Git & GitHub** – Version control and collaboration.
-
--
