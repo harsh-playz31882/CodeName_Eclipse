@@ -11,7 +11,7 @@ void UHealthBarComponent::SetHealthPercent(float Percent)
 	{
 		HealthBarWidget1 = Cast<UHealthBar1>(GetUserWidgetObject());
 	}
-	
+
 	if (HealthBarWidget1 && HealthBarWidget1->HealthBar1)
 	{
 		HealthBarWidget1->HealthBar1->SetPercent(Percent);

@@ -78,6 +78,20 @@ void AEnemy::MoveToTarget(AActor* Target)
 void AEnemy::Attack()
 {
 	Super::Attack();
+	
+	// Set action state to attacking
+	ActionState = EActionState::EAS_Attacking;
+
+	// Enable weapon collision with proper settings
+	if (WeaponBox)
+	{
+		WeaponBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		WeaponBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		WeaponBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
+		// Ignore self collision
+		WeaponBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldDynamic, ECollisionResponse::ECR_Ignore);
+	}
+
 	// Ensure the enemy is facing the player
 	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
 	if (PlayerPawn)
@@ -87,7 +101,21 @@ void AEnemy::Attack()
 		FRotator NewRotation = Direction.Rotation();
 		SetActorRotation(NewRotation);
 	}
+
+	// Play attack montage
 	PlayAttackMontage();
+}
+
+void AEnemy::AttackEnd()
+{
+	Super::AttackEnd();
+	ActionState = EActionState::EAS_Unoccupied;
+	
+	// Disable weapon collision
+	if (WeaponBox)
+	{
+		WeaponBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
 }
 
 void AEnemy::PlayAttackMontage()
@@ -113,6 +141,19 @@ void AEnemy::PlayAttackMontage()
 			break;
 		}
 		AnimInstance->Montage_JumpToSection(SectionName, AttackMontage);
+
+		// Bind the montage end delegate with correct syntax
+		FOnMontageEnded EndDelegate;
+		EndDelegate.BindUObject(this, &AEnemy::OnAttackEnd);
+		AnimInstance->Montage_SetEndDelegate(EndDelegate, AttackMontage);
+	}
+}
+
+void AEnemy::OnAttackEnd(UAnimMontage* Montage, bool bInterrupted)
+{
+	if (!bInterrupted)
+	{
+		AttackEnd();
 	}
 }
 
@@ -167,7 +208,6 @@ void AEnemy::BeginPlay()
 		FNavPathSharedPtr NavPath;
 		EnemyController->MoveTo(MoveRequest, &NavPath);
 		TArray<FNavPathPoint>& PathPoints = NavPath->GetPathPoints();
-		
 	}
 	
 	// Set initial state to chasing
@@ -184,6 +224,14 @@ void AEnemy::BeginPlay()
 	if (AIPerception)
 	{
 		AIPerception->OnPerceptionUpdated.AddDynamic(this, &AEnemy::OnPerceptionUpdated);
+	}
+
+	// Set up weapon box collision
+	if (WeaponBox)
+	{
+		WeaponBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		WeaponBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Overlap);
+		WeaponBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
 	}
 }
 
@@ -310,6 +358,9 @@ float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AC
 		EnemyState = EEnemyState::EES_Chasing;
 		GetCharacterMovement()->MaxWalkSpeed = 300.f;
 		
+		// Reset action state to allow new attacks
+		ActionState = EActionState::EAS_Unoccupied;
+		
 		// Only update target if we're not already moving to it
 		if (DamageCauser && (EnemyController == nullptr || 
 			EnemyController->GetMoveStatus() != EPathFollowingStatus::Moving ||
@@ -366,10 +417,31 @@ void AEnemy::OnPerceptionUpdated(const TArray<AActor*>& UpdatedActors)
 void AEnemy::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	// Always chase the player
+
+	if (bIsDead) return;
+
+	// Get the player pawn
 	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
-	if (PlayerPawn)
+	if (!PlayerPawn) return;
+
+	// Check if we're in attack range
+	if (InTargetRange(PlayerPawn, AttackRange))
 	{
+		// Stop movement when in attack range
+		if (EnemyController)
+		{
+			EnemyController->StopMovement();
+		}
+
+		// Attack if we're not already attacking
+		if (ActionState == EActionState::EAS_Unoccupied)
+		{
+			Attack();
+		}
+	}
+	else
+	{
+		// Move to target if we're not in range
 		MoveToTarget(PlayerPawn);
 	}
 }

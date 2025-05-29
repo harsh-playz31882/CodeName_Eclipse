@@ -7,7 +7,7 @@
 #include "HealthBarComponent.generated.h"
 
 /**
- * 
+ *
  */
 UCLASS()
 class PROJECT_ECLIPSE_API UHealthBarComponent : public UWidgetComponent

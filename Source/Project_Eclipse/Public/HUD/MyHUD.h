@@ -22,4 +22,4 @@ public:
     class UPlayerHealthBar* PlayerHealthBarWidget;
 
     void UpdateHealthBar(float Percent);
-}; 
+};

@@ -1,7 +1,6 @@
 #include "HUD/MyHUD.h"
 #include "HUD/PlayerHealthBar.h"
 #include "Blueprint/UserWidget.h"
-#include "InputActionValue.h"
 
 AMyHUD::AMyHUD()
 {
@@ -45,8 +44,5 @@ void AMyHUD::UpdateHealthBar(float Percent)
     {
         PlayerHealthBarWidget->SetHealthPercent(Percent);
     }
-    else
-    {
-        UE_LOG(LogTemp, Warning, TEXT("UpdateHealthBar called but PlayerHealthBarWidget is null"));
-    }
-} 
+   
+}

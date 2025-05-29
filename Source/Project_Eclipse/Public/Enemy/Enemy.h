@@ -30,11 +30,23 @@ public:
 
 	EEnemyState EnemyState = EEnemyState::EES_Patrolling;	
 
+	// Add ActionState enum
+	enum class EActionState : uint8
+	{
+		EAS_Unoccupied,
+		EAS_Attacking
+	};
+
+	// Add ActionState variable
+	EActionState ActionState = EActionState::EAS_Unoccupied;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Components")
+	UHealthBarComponent* HealthBarWidget1;
+
 protected:
 	virtual void BeginPlay() override;
 
 	void Die();
-
 
 	bool InTargetRange(AActor* Target, double Radius);
 
@@ -46,6 +58,12 @@ protected:
 	AActor* ChoosePatrolTarget();
 
 	void PlayHitReactMontage(const FName& SectionName);
+
+	// Add AttackEnd function declaration
+	virtual void AttackEnd();
+
+	// Add montage end delegate function with correct parameters
+	void OnAttackEnd(UAnimMontage* Montage, bool bInterrupted);
 
 public:	
 	virtual void Tick(float DeltaTime) override;
@@ -71,9 +89,6 @@ private:
 	//Components
 	UPROPERTY(VisibleAnywhere)
 	UAIPerceptionComponent* AIPerception;
-
-	UPROPERTY(VisibleAnywhere)
-	UHealthBarComponent* HealthBarWidget1;
 
 	/*
 	 Animation Montages
