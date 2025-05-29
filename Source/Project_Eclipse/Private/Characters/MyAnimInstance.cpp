@@ -22,35 +22,21 @@ void UMyAnimInstance::NativeInitializeAnimation()
 void UMyAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 {
 	Super::NativeUpdateAnimation(DeltaSeconds);
+	
 	if (MovementComponent)
 	{
-		MovementComponent->Velocity;
-		GroundSpeed = UKismetMathLibrary::VSizeXY(MovementComponent->Velocity);
+		// Calculate ground speed using only horizontal movement
+		FVector Velocity = MovementComponent->Velocity;
+		GroundSpeed = UKismetMathLibrary::VSizeXY(Velocity);
 		IsFalling = MovementComponent->IsFalling();
-		CharacterState = MyCharacter->GetCharacterState();
-
-		if (MovementComponent)
+		
+		if (MyCharacter)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("Movement component is getting set!"));
-			FVector Velocity = MovementComponent->Velocity;
-
-			UE_LOG(LogTemp, Warning, TEXT("Velocity: X=%.2f, Y=%.2f, Z=%.2f"), Velocity.X, Velocity.Y, Velocity.Z);
-			float Speed = Velocity.Size();
-
-			UE_LOG(LogTemp, Warning, TEXT("Velocity: X=%.2f, Y=%.2f, Z=%.2f | Speed: %.2f"),
-				Velocity.X, Velocity.Y, Velocity.Z, Speed);
-
-		    GroundSpeed = MovementComponent->Velocity.Size(); 
-
-			UE_LOG(LogTemp, Warning, TEXT("Ground Speed: %.2f"), GroundSpeed);
-
-
+			CharacterState = MyCharacter->GetCharacterState();
 		}
 
-
+		// Debug logging
+		UE_LOG(LogTemp, Warning, TEXT("Ground Speed: %.2f"), GroundSpeed);
 	}
-
-	
-
 }
 	

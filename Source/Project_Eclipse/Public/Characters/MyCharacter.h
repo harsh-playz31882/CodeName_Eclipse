@@ -9,6 +9,7 @@
 class USpringArmComponent;
 class UCameraComponent;
 class UAnimMontage;
+class UBoxComponent;
 
 UCLASS()
 class PROJECT_ECLIPSE_API AMyCharacter : public ABaseCharacter
@@ -26,13 +27,24 @@ public:
 
 	FORCEINLINE ECharacterState GetCharacterState() const { return CharacterState; }
 
+	void EnableKickCollision();
+	void DisableKickCollision();
+
+
+	void EnableWeaponCollision();
+	void DisableWeaponCollision();
+
 protected:
 	virtual void BeginPlay() override;
 	void MoveForward(float Value);
 	void MoveRight(float Value);
 	void Turn(float Value);
 	void LookUp(float Value);
+	
 	void AttackEnd() override;
+
+	UFUNCTION()
+	void OnMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 
 private:
 	UPROPERTY(VisibleAnywhere)
@@ -41,9 +53,17 @@ private:
 	UPROPERTY(VisibleAnywhere)
 	UCameraComponent* ViewCamera;
 
+	UPROPERTY(VisibleAnywhere)
+	UBoxComponent* KickBox;
+
 	UPROPERTY(BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
 	EActionState ActionState = EActionState::EAS_Unoccupied;
 
 	ECharacterState CharacterState = ECharacterState::ECS_Unequipped;
+
+	int32 AttackCount = 0;
+
+	UFUNCTION()
+	void OnKickBoxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 };
 

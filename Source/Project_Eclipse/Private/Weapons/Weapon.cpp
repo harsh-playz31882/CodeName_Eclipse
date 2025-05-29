@@ -58,67 +58,53 @@ void AWeapon::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* Ot
 
 }
 
-void AWeapon::OnBoxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+bool AWeapon::BoxTrace(FHitResult& OutHit, bool bDrawDebug)
 {
-	const FVector Start = BoxTraceStart->GetComponentLocation();
-	const FVector End = BoxTraceEnd->GetComponentLocation();
-	FVector BoxHalfSize = FVector(5.f, 5.f, 5.f);
+    const FVector Start = BoxTraceStart->GetComponentLocation();
+    const FVector End = BoxTraceEnd->GetComponentLocation();
+    const FVector BoxHalfSize = FVector(5.f, 5.f, 5.f);
 
+    TArray<AActor*> ActorsToIgnore;
+    ActorsToIgnore.Add(this);
 
-	TArray<AActor*> ActorsToIgnore;
-	ActorsToIgnore.Add(this);
-	FHitResult BoxHit;
-	
-
-	bool bHit = false;
-	bHit = UKismetSystemLibrary::BoxTraceSingle(
-		this,
+    return UKismetSystemLibrary::BoxTraceSingle(
+        this,
         Start,
         End,
-		BoxHalfSize,
+        BoxHalfSize,
         BoxTraceStart->GetComponentRotation(),
         ETraceTypeQuery::TraceTypeQuery1,
         false,
         ActorsToIgnore,
-		bHit && BoxHit.bBlockingHit ? EDrawDebugTrace::ForDuration : EDrawDebugTrace::None,
-        BoxHit,
+        bDrawDebug ? EDrawDebugTrace::ForDuration : EDrawDebugTrace::None,
+        OutHit,
         true
     );
-
-	if (BoxHit.GetActor())
-	{
-
-		UGameplayStatics::ApplyDamage(BoxHit.GetActor(),
-			Damage,
-			GetInstigator()->GetController(),
-			this,
-			UDamageType::StaticClass()
-		);
-
-		IHitInterface* HitInterface = Cast<IHitInterface>(BoxHit.GetActor());
-		if (HitInterface)
-		{
-			HitInterface->GetHit(BoxHit.ImpactPoint);
-
-		}
-
-
-		
-	};
-
-	if (BoxHit.bBlockingHit)
-	{
-		// A valid collision occurred
-		if (GEngine)
-		{
-			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green,
-				FString::Printf(TEXT("Hit detected"), *BoxHit.GetActor()->GetName()));
-		}
-	}
-
-
 }
 
+void AWeapon::OnBoxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+    FHitResult BoxHit;
+    bool bHit = BoxTrace(BoxHit, false);
+
+    if (BoxHit.GetActor())
+    {
+        // Apply damage to the hit actor
+        UGameplayStatics::ApplyDamage(
+            BoxHit.GetActor(),
+            Damage,
+            GetInstigator()->GetController(),
+            this,
+            UDamageType::StaticClass()
+        );
+
+        // Handle hit interface if implemented
+        if (IHitInterface* HitInterface = Cast<IHitInterface>(BoxHit.GetActor()))
+        {
+            HitInterface->GetHit(BoxHit.ImpactPoint);
+        }
+    }
+}
 
 void AWeapon::Tick(float DeltaTime)
 {

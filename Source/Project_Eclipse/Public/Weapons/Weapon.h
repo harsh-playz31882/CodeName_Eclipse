@@ -40,6 +40,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category = WeaponProperties)
 	float Damage = 20.f;
 
+	// Helper function to perform box trace
+	bool BoxTrace(FHitResult& OutHit, bool bDrawDebug = false);
+
 	UFUNCTION()
 	void OnSphereOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 

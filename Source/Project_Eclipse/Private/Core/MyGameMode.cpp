@@ -4,4 +4,4 @@
 AMyGameMode::AMyGameMode()
 {
     HUDClass = AMyHUD::StaticClass();
-} 
+}
