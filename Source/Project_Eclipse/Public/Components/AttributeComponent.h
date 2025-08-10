@@ -33,7 +33,7 @@ private:
 
 public:
 	void ReceiveDamage(float DamageAmount);
-	float GetHealthPerecent();
+	float GetHealthPercent();
 	bool IsAlive();
 
 

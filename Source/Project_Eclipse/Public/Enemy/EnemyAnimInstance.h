@@ -22,6 +22,12 @@ public:
 	UPROPERTY(BlueprintReadOnly)
 	EDeathPose DeathPose;
 
+	UPROPERTY(BlueprintReadOnly, Category = Movement)
+	float GroundSpeed;
+
+	UPROPERTY(BlueprintReadOnly, Category = Movement)
+	bool IsFalling;
+
 private:
 	UPROPERTY()
 	class AEnemy* Enemy;

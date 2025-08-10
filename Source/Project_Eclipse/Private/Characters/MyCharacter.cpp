@@ -15,6 +15,12 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "Interfaces/HitInterface.h"
 #include "Perception/AIPerceptionComponent.h"
+#include "HUD/MainHUD.h"
+#include "HUD/Character_Overlay.h"
+
+#include "Components/InputComponent.h"
+#include "EnhancedInputComponent.h"
+#include "EnhancedInputSubsystems.h"
 
 
 
@@ -41,21 +47,80 @@ AMyCharacter::AMyCharacter()
     ViewCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
     ViewCamera->bUsePawnControlRotation = false;
 
-    // Create kick box component
-    KickBox = CreateDefaultSubobject<UBoxComponent>(TEXT("Kick Box"));
-    KickBox->SetupAttachment(GetMesh(), FName("foot_l"));
-    KickBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-    KickBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Overlap);
-    KickBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
+    // Create kick box components for both legs
+    KickBoxLeft = CreateDefaultSubobject<UBoxComponent>(TEXT("Kick Box Left"));
+    KickBoxLeft->SetupAttachment(GetMesh(), FName("foot_l"));
+    KickBoxLeft->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    KickBoxLeft->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Overlap);
+    KickBoxLeft->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
 
-    AttackMontage = CreateDefaultSubobject<UAnimMontage>(TEXT("/Game/Animations/KYRA_Animations/AM_AttackMontage2.AM_AttackMontage2"));
+    KickBoxRight = CreateDefaultSubobject<UBoxComponent>(TEXT("Kick Box Right"));
+    KickBoxRight->SetupAttachment(GetMesh(), FName("foot_r"));
+    KickBoxRight->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    KickBoxRight->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Overlap);
+    KickBoxRight->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
+
+    // Set up montages
+    AttackMontage = CreateDefaultSubobject<UAnimMontage>(TEXT("/Game/Animations/KYRA2_Animations/AM_AttackMontage3.AM_AttackMontage3"));
+    HitReactMontage = CreateDefaultSubobject<UAnimMontage>(TEXT("/Game/Animations/KYRA2_Animations/HitReact/AM_HitReact3.AM_HitReact3"));
 }
 
 void AMyCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// Configure character movement settings
+	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
+	{
+		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
+		{
+			Subsystem->AddMappingContext(InputMappingContext, 0);
+		}
+	}
+
+
+
+	InitializeCharacterOverlay();
+	GetCharacterMovements();
+	StopMontages();
+
+	USkeletalMeshComponent* MeshComp = GetMesh(); 
+
+	if (MeshComp && MeshComp->GetSkeletalMeshAsset())
+	{
+		if (MeshComp->DoesSocketExist(FName("WeaponSocket")))
+		{
+			FVector SocketLocation = MeshComp->GetSocketLocation(FName("WeaponSocket"));
+		}
+		
+	}
+	
+	if (WeaponBox && GetMesh())
+	{
+		WeaponBox->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("weapon_r"));
+		WeaponBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		WeaponBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Overlap);
+		WeaponBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
+	}
+
+	
+	KickBoxLeft->OnComponentBeginOverlap.AddDynamic(this, &AMyCharacter::OnKickBoxOverlap);
+	KickBoxRight->OnComponentBeginOverlap.AddDynamic(this, &AMyCharacter::OnKickBoxOverlap);
+
+	Tags.Add(FName("MyCharacter"));
+
+}
+
+void AMyCharacter::StopMontages()
+{
+	// Stop any playing montages
+	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+	{
+		AnimInstance->StopAllMontages(0.0f);
+	}
+}
+
+void AMyCharacter::GetCharacterMovements()
+{
 	if (GetCharacterMovement())
 	{
 		GetCharacterMovement()->bOrientRotationToMovement = true;
@@ -66,47 +131,6 @@ void AMyCharacter::BeginPlay()
 		GetCharacterMovement()->JumpZVelocity = 500.f;
 		GetCharacterMovement()->AirControl = 0.2f;
 	}
-
-	// Stop any playing montages
-	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
-	{
-		AnimInstance->StopAllMontages(0.0f);
-	}
-
-	USkeletalMeshComponent* MeshComp = GetMesh(); // Get the skeletal mesh component
-
-	if (MeshComp && MeshComp->GetSkeletalMeshAsset())
-	{
-		if (MeshComp->DoesSocketExist(FName("WeaponSocket")))
-		{
-			FVector SocketLocation = MeshComp->GetSocketLocation(FName("WeaponSocket"));
-			UE_LOG(LogTemp, Warning, TEXT("WeaponSocket Location: %s"), *SocketLocation.ToString());
-		}
-		else
-		{
-			UE_LOG(LogTemp, Warning, TEXT("WeaponSocket not found on Skeletal Mesh!"));
-		}
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("No Skeletal Mesh found on Character!"));
-	}
-
-	// Attach weapon box to socket after mesh is fully initialized
-	if (WeaponBox && GetMesh())
-	{
-		WeaponBox->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("weapon_r"));
-		// Ensure weapon collision is disabled by default
-		WeaponBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		WeaponBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Overlap);
-		WeaponBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
-	}
-
-	// Set up kick box overlap events
-	KickBox->OnComponentBeginOverlap.AddDynamic(this, &AMyCharacter::OnKickBoxOverlap);
-
-	Tags.Add(FName("MyCharacter"));
-
 }
 
 void AMyCharacter::MoveForward(float Value)
@@ -154,6 +178,18 @@ void AMyCharacter::Attack()
 
 		PlayAttackMontage();
 		ActionState = EActionState::EAS_Attacking;
+	}
+}
+
+void AMyCharacter::Jump()
+{
+	if (ActionState == EActionState::EAS_Unoccupied)
+	{
+		// Call the parent class jump function
+		Super::Jump();
+		
+		// You can add additional jump logic here if needed
+		// For example, play jump sound, particles, or animations
 	}
 }
 
@@ -234,18 +270,26 @@ void AMyCharacter::OnKickBoxOverlap(UPrimitiveComponent* OverlappedComp, AActor*
 
 void AMyCharacter::EnableKickCollision()
 {
-	if (KickBox)
-	{
-		KickBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	}
+    if (KickBoxLeft)
+    {
+        KickBoxLeft->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+    }
+    if (KickBoxRight)
+    {
+        KickBoxRight->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+    }
 }
 
 void AMyCharacter::DisableKickCollision()
 {
-	if (KickBox)
-	{
-		KickBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	}
+    if (KickBoxLeft)
+    {
+        KickBoxLeft->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    }
+    if (KickBoxRight)
+    {
+        KickBoxRight->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    }
 }
 
 void AMyCharacter::AttackEnd()
@@ -287,6 +331,11 @@ float AMyCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEve
     {
         Attributes->ReceiveDamage(DamageAmount);
         
+        // Update the health bar UI
+        if (Character_Overlay)
+        {
+            Character_Overlay->SetHealthBarPercent(Attributes->GetHealthPercent());
+        }
     }
     return DamageAmount;
 }
@@ -312,12 +361,16 @@ void AMyCharacter::Tick(float DeltaTime)
 void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
-	PlayerInputComponent->BindAxis("MoveForward", this, &AMyCharacter::MoveForward);
-	PlayerInputComponent->BindAxis("MoveRight", this, &AMyCharacter::MoveRight);
-	PlayerInputComponent->BindAxis("Turn", this, &AMyCharacter::Turn);
-	PlayerInputComponent->BindAxis("LookUp", this, &AMyCharacter::LookUp);
-	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &AMyCharacter::Jump);
-	PlayerInputComponent->BindAction("Attack", IE_Pressed, this, &AMyCharacter::Attack);
+
+	if (UEnhancedInputComponent* EnhancedInputComponent = CastChecked<UEnhancedInputComponent>(PlayerInputComponent))
+	{
+		// Bind the movement action
+		EnhancedInputComponent->BindAction(MovementAction, ETriggerEvent::Triggered, this, &AMyCharacter::Move);
+		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AMyCharacter::Look);
+		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Triggered, this, &AMyCharacter::Jump);
+		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Triggered, this, &AMyCharacter::Attack);
+	}
+	
 }
 
 // Add new functions to enable/disable weapon collision
@@ -337,6 +390,102 @@ void AMyCharacter::DisableWeaponCollision()
 	{
 		WeaponBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	}
+}
+
+void AMyCharacter::InitializeCharacterOverlay()
+{
+	APlayerController* PlayerController = Cast<APlayerController>(GetController());
+	if (PlayerController)
+	{
+		AMainHUD* MainHUD = Cast<AMainHUD>(PlayerController->GetHUD());
+		if (MainHUD)
+		{
+			Character_Overlay = MainHUD->GetCharacterOverlay();
+			if (Character_Overlay && Attributes)
+			{
+				Character_Overlay->SetHealthBarPercent(Attributes->GetHealthPercent());
+				Character_Overlay->SetStaminaBarPercent(1.f);
+			}
+
+		}
+	}
+}
+
+void AMyCharacter::Move(const FInputActionValue& Value)
+{
+	const FVector2D MovementVector = Value.Get<FVector2D>();
+
+	const FRotator Rotation = GetControlRotation();
+	const FRotator YawRotation(0.f, Rotation.Yaw, 0.f);
+
+	const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+	AddMovementInput(ForwardDirection, MovementVector.Y);
+
+	const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+	AddMovementInput(RightDirection, MovementVector.X);
+}
+
+void AMyCharacter::Look(const FInputActionValue& Value)
+{
+	const FVector2D LookAxisVector = Value.Get<FVector2D>();
+
+	AddControllerPitchInput(LookAxisVector.Y);
+	AddControllerYawInput(LookAxisVector.X);
+}
+
+void AMyCharacter::GetHit(const FVector& ImpactPoint)
+{
+    if (!GetMesh() || !GetMesh()->GetAnimInstance())
+    {
+        UE_LOG(LogTemp, Warning, TEXT("GetHit: Mesh or AnimInstance is null"));
+        return;
+    }
+
+    if (Attributes && Attributes->IsAlive())
+    {
+        // Stop any current montages
+        StopMontages();
+
+        // Play hit reaction
+        DirectionalHitReact(ImpactPoint);
+        UE_LOG(LogTemp, Warning, TEXT("GetHit: Playing hit reaction"));
+
+        // Disable weapon collision during hit reaction
+        DisableWeaponCollision();
+        DisableKickCollision();
+    }
+
+    // Play hit effects
+    if (HitSound)
+    {
+        UGameplayStatics::PlaySoundAtLocation(this, HitSound, ImpactPoint);
+    }
+    if (HitParticles && GetWorld())
+    {
+        UGameplayStatics::SpawnEmitterAtLocation(
+            GetWorld(),
+            HitParticles,
+            ImpactPoint
+        );
+    }
+}
+
+void AMyCharacter::OnHitReactMontageEnded(UAnimMontage* Montage, bool bInterrupted)
+{
+    if (!Montage) return;
+    
+    if (Montage == HitReactMontage)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("OnHitReactMontageEnded: Hit reaction montage ended"));
+        ActionState = EActionState::EAS_Unoccupied;
+        
+        // Re-enable movement rotation
+        if (GetCharacterMovement())
+        {
+            GetCharacterMovement()->bOrientRotationToMovement = true;
+            GetCharacterMovement()->bUseControllerDesiredRotation = false;
+        }
+    }
 }
 
 

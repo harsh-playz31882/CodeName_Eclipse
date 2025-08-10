@@ -2,6 +2,7 @@
 #include "Components/BoxComponent.h"
 #include "Weapons/Weapon.h"
 #include "Components/AttributeComponent.h"
+#include "Engine/Engine.h"
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -71,12 +72,48 @@ void ABaseCharacter::DirectionalHitReact(const FVector& ImpactPoint)
 
 void ABaseCharacter::PlayHitReactMontage(const FName& SectionName)
 {
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if (AnimInstance && HitReactMontage)
+	if (!GetMesh())
 	{
-		AnimInstance->Montage_Play(HitReactMontage);
-		AnimInstance->Montage_JumpToSection(SectionName, HitReactMontage);
+		UE_LOG(LogTemp, Warning, TEXT("PlayHitReactMontage: Mesh is null"));
+		return;
+	}
 
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (!AnimInstance)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("PlayHitReactMontage: AnimInstance is null"));
+		return;
+	}
+
+	if (!HitReactMontage)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("PlayHitReactMontage: HitReactMontage is null"));
+		return;
+	}
+
+	// Stop any currently playing montages
+	AnimInstance->StopAllMontages(0.1f);
+	
+	// Play the hit react montage
+	AnimInstance->Montage_Play(HitReactMontage, 1.0f);
+	AnimInstance->Montage_JumpToSection(SectionName, HitReactMontage);
+	
+	// Set up montage end delegate
+	FOnMontageEnded EndDelegate;
+	EndDelegate.BindUObject(this, &ABaseCharacter::OnHitReactMontageEnded);
+	AnimInstance->Montage_SetEndDelegate(EndDelegate, HitReactMontage);
+
+	UE_LOG(LogTemp, Warning, TEXT("PlayHitReactMontage: Successfully played montage section %s"), *SectionName.ToString());
+}
+
+void ABaseCharacter::OnHitReactMontageEnded(UAnimMontage* Montage, bool bInterrupted)
+{
+	if (!Montage) return;
+	
+	// Reset any state or flags after hit reaction is complete
+	if (Montage == HitReactMontage)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("OnHitReactMontageEnded: Hit reaction montage ended"));
 	}
 }
 
@@ -87,7 +124,21 @@ void ABaseCharacter::Tick(float DeltaTime)
 
 void ABaseCharacter::GetHit(const FVector& ImpactPoint)
 {
+	if (!GetMesh() || !GetMesh()->GetAnimInstance())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("GetHit: Mesh or AnimInstance is null"));
+		return;
+	}
 
+	if (Attributes && Attributes->IsAlive())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("GetHit: Playing hit reaction"));
+		DirectionalHitReact(ImpactPoint);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("GetHit: Character is dead or has no attributes"));
+	}
 }
 
 void ABaseCharacter::SetWeaponCollisionEnabled(ECollisionEnabled::Type CollisionEnabled)

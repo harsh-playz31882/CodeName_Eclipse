@@ -29,8 +29,7 @@ protected:
 
 	virtual void Attack();
 	virtual void PlayAttackMontage();
-
-	void PlayHitReactMontage(const FName& SectionName);
+	virtual void PlayHitReactMontage(const FName& SectionName);
 
 	UFUNCTION(BlueprintCallable)
 	virtual void AttackEnd();
@@ -49,6 +48,9 @@ protected:
 	UAnimMontage* HitReactMontage;
 
 	void DirectionalHitReact(const FVector& ImpactPoint);
+
+	UFUNCTION()
+	virtual void OnHitReactMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 
 	UPROPERTY(VisibleAnywhere)
 	UAttributeComponent* Attributes;

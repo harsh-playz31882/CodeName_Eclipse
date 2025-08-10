@@ -4,15 +4,19 @@
 #include "GameFramework/Character.h"
 #include "BaseCharacter.h"	
 #include "CharacterTypes.h"
+#include "InputActionValue.h"
 #include "MyCharacter.generated.h"
 
 class USpringArmComponent;
 class UCameraComponent;
 class UAnimMontage;
 class UBoxComponent;
+class UCharacter_Overlay;
+class UInputMappingContext;
+class UInputAction;
 
 UCLASS()
-class PROJECT_ECLIPSE_API AMyCharacter : public ABaseCharacter
+class PROJECT_ECLIPSE_API AMyCharacter : public ABaseCharacter 
 {
 	GENERATED_BODY()
 
@@ -24,6 +28,7 @@ public:
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
 	virtual void PlayAttackMontage() override;
 	virtual void Attack() override;
+	virtual void Jump() override;
 
 	FORCEINLINE ECharacterState GetCharacterState() const { return CharacterState; }
 
@@ -36,6 +41,31 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputMappingContext* InputMappingContext;
+
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* MovementAction;
+
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* LookAction;
+
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* JumpAction;
+
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* AttackAction;
+
+
+	void Move(const FInputActionValue& Value);
+	void Look(const FInputActionValue& Value);
+
+
+	void StopMontages();
+
+	void GetCharacterMovements();
+	
 	void MoveForward(float Value);
 	void MoveRight(float Value);
 	void Turn(float Value);
@@ -46,18 +76,33 @@ protected:
 	UFUNCTION()
 	void OnMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 
+	UFUNCTION()
+	void GetHit(const FVector& ImpactPoint);
+
+	virtual void OnHitReactMontageEnded(UAnimMontage* Montage, bool bInterrupted) override;
+
+
 private:
+	void InitializeCharacterOverlay();
+
 	UPROPERTY(VisibleAnywhere)
 	USpringArmComponent* CameraBoom;
 
 	UPROPERTY(VisibleAnywhere)
 	UCameraComponent* ViewCamera;
 
+	// Add two box components for both legs
 	UPROPERTY(VisibleAnywhere)
-	UBoxComponent* KickBox;
+	UBoxComponent* KickBoxLeft;
+
+	UPROPERTY(VisibleAnywhere)
+	UBoxComponent* KickBoxRight;
 
 	UPROPERTY(BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
 	EActionState ActionState = EActionState::EAS_Unoccupied;
+
+	UPROPERTY()
+	UCharacter_Overlay* Character_Overlay;
 
 	ECharacterState CharacterState = ECharacterState::ECS_Unequipped;
 

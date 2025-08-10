@@ -26,7 +26,7 @@ public:
 	bool bIsDead = false;
 
 	UPROPERTY(BlueprintReadOnly)
-	EDeathPose DeathPose;
+	EDeathPose DeathPose = EDeathPose::EDP_Alive;
 
 	EEnemyState EnemyState = EEnemyState::EES_Patrolling;	
 
@@ -46,6 +46,8 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
+	void WeaponBoxCollision();
+
 	void Die();
 
 	bool InTargetRange(AActor* Target, double Radius);
@@ -57,13 +59,22 @@ protected:
 
 	AActor* ChoosePatrolTarget();
 
-	void PlayHitReactMontage(const FName& SectionName);
+	virtual void PlayHitReactMontage(const FName& SectionName) override;
 
 	// Add AttackEnd function declaration
 	virtual void AttackEnd();
 
 	// Add montage end delegate function with correct parameters
 	void OnAttackEnd(UAnimMontage* Montage, bool bInterrupted);
+
+	UFUNCTION()
+	void OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted);
+
+	UFUNCTION()
+	void OnWeaponBoxOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	UFUNCTION()
+	void PatrolTimerFinished();
 
 public:	
 	virtual void Tick(float DeltaTime) override;
@@ -85,6 +96,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	float AttackRange = 150.f;
 
+	UPROPERTY(EditAnywhere, Category = "Combat")
+	float AttackDamage = 20.f;
+
 private:
 	//Components
 	UPROPERTY(VisibleAnywhere)
@@ -96,6 +110,7 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category = Montages)
 	UAnimMontage* DeathMontage;
+
 
 	/*
 	* Navigation
@@ -111,12 +126,23 @@ private:
 	UPROPERTY(EditInstanceOnly, Category = "AI Navigation")
 	TArray<AActor*> PatrolTargets;
 
-	UPROPERTY(EditAnywhere)
-	double PatrolRadius = 200.f;
+	UPROPERTY(EditAnywhere, Category = "AI Navigation")
+	float PatrolRadius = 200.f;
+
+	UPROPERTY()
+	int32 PatrolTargetIndex;
 
 	FTimerHandle PatrolTimer;
-	void PatrolTimerFinished();
+
+	UPROPERTY(EditAnywhere, Category = "AI Navigation")
+	float WaitMin = 5.f;
+
+	UPROPERTY(EditAnywhere, Category = "AI Navigation")
+	float WaitMax = 10.f;
 
 	UPROPERTY()
 	AWeapon* EquippedWeapon;
+
+	UPROPERTY()
+	int32 AttackCount = 0;
 };
