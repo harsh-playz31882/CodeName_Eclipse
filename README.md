@@ -6,10 +6,10 @@
 
 ## 🎮 Features
 
-- ⚔️ **Diverse Characters** – Choose from a growing roster of warriors, each with unique abilities and backstories.
-- 🌌 **Dual Realms** – Battle across environments in both light and shadow dimensions.
-- 🎥 **Cinematic Combat** – Smooth animations, dynamic combat mechanics
-- 🧠 **AI-Powered Opponents** – Adaptive enemy behavior for realistic gameplay.
+- **Diverse Characters** – Choose from a growing roster of warriors, each with unique abilities and backstories.
+- **Dual Realms** – Battle across environments in both light and shadow dimensions.
+- **Cinematic Combat** – Smooth animations, dynamic combat mechanics
+- **AI-Powered Opponents** – Adaptive enemy behavior for realistic gameplay.
 
 ---
 
