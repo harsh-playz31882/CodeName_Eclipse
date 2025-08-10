@@ -1,6 +1,6 @@
 
 
-# 🌑 Project_Eclipse
+# Project_Eclipse
 
 **Project_Eclipse** is a medium-paced, immersive 3D fighting game featuring a cast of unique characters, dynamic combat mechanics, and a captivating storyline combined with multiplayer system.
 
@@ -16,7 +16,7 @@
 ## 🛠️ Built With
 
 - **Unreal Engine** – For high-quality 3D rendering and physics.
-- **Blender** – For character and environment modeling.
+- **Blender and Other Multiple AI Tools** – For character and environment modeling.
 - **C++ / Blueprint** – Core game logic and mechanics.
 - **Git & GitHub** – Version control and collaboration.
 - Main files are in Master Branch
