@@ -14,8 +14,7 @@ class PROJECT_ECLIPSE_API UMyAnimInstance : public UAnimInstance
 	GENERATED_BODY()
 
 public:
-	virtual void NativeInitializeAnimation() override;
-	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
+	/*virtual void NativeInitializeAnimation() override;
 
 	UPROPERTY(BlueprintReadOnly)
 	class AMyCharacter* MyCharacter;
@@ -31,11 +30,9 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, Category = "Movement | Character State")
 	ECharacterState CharacterState;
+	
+	*/
+	
 
-	UPROPERTY(BlueprintReadOnly, Category = Movement)
-	bool IsMoving;
-
-	UPROPERTY(BlueprintReadOnly, Category = Movement)
-	bool IsJumping;
 	
 };

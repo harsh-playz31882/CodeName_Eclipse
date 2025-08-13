@@ -61,7 +61,7 @@ AMyCharacter::AMyCharacter()
     KickBoxRight->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
 
     // Set up montages
-    AttackMontage = CreateDefaultSubobject<UAnimMontage>(TEXT("/Game/Animations/KYRA2_Animations/AM_AttackMontage3.AM_AttackMontage3"));
+    AttackMontage = CreateDefaultSubobject<UAnimMontage>(TEXT("/Game/Animations/KYRA2_Animations/AM_KYRA.AM_KYRA"));
     HitReactMontage = CreateDefaultSubobject<UAnimMontage>(TEXT("/Game/Animations/KYRA2_Animations/HitReact/AM_HitReact3.AM_HitReact3"));
 }
 
@@ -130,6 +130,11 @@ void AMyCharacter::GetCharacterMovements()
 		GetCharacterMovement()->MaxWalkSpeed = 600.f;
 		GetCharacterMovement()->JumpZVelocity = 500.f;
 		GetCharacterMovement()->AirControl = 0.2f;
+		
+		// Add these settings to prevent animation offset issues
+		GetCharacterMovement()->bMaintainHorizontalGroundVelocity = true;
+		GetCharacterMovement()->bConstrainToPlane = true;
+		GetCharacterMovement()->bSnapToPlaneAtStart = true;
 	}
 }
 
@@ -356,6 +361,9 @@ void AMyCharacter::Tick(float DeltaTime)
 			CharacterState = ECharacterState::ECS_Equipped;
 		}
 	}
+	
+	// Continuously control animation root motion to prevent offset issues
+	ControlAnimationRootMotion();
 }
 
 void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -366,9 +374,10 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	{
 		// Bind the movement action
 		EnhancedInputComponent->BindAction(MovementAction, ETriggerEvent::Triggered, this, &AMyCharacter::Move);
-		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AMyCharacter::Look);
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Triggered, this, &AMyCharacter::Jump);
+		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AMyCharacter::Look);
 		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Triggered, this, &AMyCharacter::Attack);
+
 	}
 	
 }
@@ -376,6 +385,7 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 // Add new functions to enable/disable weapon collision
 void AMyCharacter::EnableWeaponCollision()
 {
+	if (WeaponBox)
 	if (WeaponBox)
 	{
 		WeaponBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
@@ -423,6 +433,9 @@ void AMyCharacter::Move(const FInputActionValue& Value)
 
 	const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 	AddMovementInput(RightDirection, MovementVector.X);
+	
+	// Control animation root motion during movement
+	ControlAnimationRootMotion();
 }
 
 void AMyCharacter::Look(const FInputActionValue& Value)
@@ -431,6 +444,19 @@ void AMyCharacter::Look(const FInputActionValue& Value)
 
 	AddControllerPitchInput(LookAxisVector.Y);
 	AddControllerYawInput(LookAxisVector.X);
+}
+
+void AMyCharacter::ControlAnimationRootMotion()
+{
+	// Simple approach: Just ensure the character stays grounded during movement
+	// This prevents the animation offset issue without complex root motion control
+	if (GetCharacterMovement())
+	{
+		// Keep the character properly constrained to the ground plane
+		GetCharacterMovement()->bMaintainHorizontalGroundVelocity = true;
+		GetCharacterMovement()->bConstrainToPlane = true;
+		GetCharacterMovement()->bSnapToPlaneAtStart = true;
+	}
 }
 
 void AMyCharacter::GetHit(const FVector& ImpactPoint)

@@ -60,7 +60,7 @@ protected:
 
 	void Move(const FInputActionValue& Value);
 	void Look(const FInputActionValue& Value);
-
+	void ControlAnimationRootMotion();
 
 	void StopMontages();
 
