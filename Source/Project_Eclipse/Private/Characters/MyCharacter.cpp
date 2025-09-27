@@ -51,18 +51,18 @@ AMyCharacter::AMyCharacter()
     KickBoxLeft = CreateDefaultSubobject<UBoxComponent>(TEXT("Kick Box Left"));
     KickBoxLeft->SetupAttachment(GetMesh(), FName("foot_l"));
     KickBoxLeft->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-    KickBoxLeft->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Overlap);
-    KickBoxLeft->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
+    KickBoxLeft->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+    KickBoxLeft->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
 
     KickBoxRight = CreateDefaultSubobject<UBoxComponent>(TEXT("Kick Box Right"));
     KickBoxRight->SetupAttachment(GetMesh(), FName("foot_r"));
     KickBoxRight->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-    KickBoxRight->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Overlap);
-    KickBoxRight->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
+    KickBoxRight->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+    KickBoxRight->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
 
     // Set up montages
-    AttackMontage = CreateDefaultSubobject<UAnimMontage>(TEXT("/Game/Animations/KYRA2_Animations/AM_KYRA.AM_KYRA"));
-    HitReactMontage = CreateDefaultSubobject<UAnimMontage>(TEXT("/Game/Animations/KYRA2_Animations/HitReact/AM_HitReact3.AM_HitReact3"));
+    AttackMontage = CreateDefaultSubobject<UAnimMontage>(TEXT("/Game/Animations/test_character/AM_Attack.AM_Attack"));
+    HitReactMontage = CreateDefaultSubobject<UAnimMontage>(TEXT("/Game/Animations/test_character/AM_HitReact.AM_HitReact"));
 }
 
 void AMyCharacter::BeginPlay()
@@ -170,21 +170,7 @@ void AMyCharacter::LookUp(float Value)
 	AddControllerPitchInput(Value);
 }
 
-void AMyCharacter::Attack()
-{
-	if (ActionState == EActionState::EAS_Unoccupied)
-	{
-		// Disable movement rotation during attack
-		if (GetCharacterMovement())
-		{
-			GetCharacterMovement()->bOrientRotationToMovement = false;
-			GetCharacterMovement()->bUseControllerDesiredRotation = true;
-		}
 
-		PlayAttackMontage();
-		ActionState = EActionState::EAS_Attacking;
-	}
-}
 
 void AMyCharacter::Jump()
 {
@@ -204,6 +190,12 @@ void AMyCharacter::PlayAttackMontage()
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && AttackMontage)
 	{
+		// Clear the hit actors list for this new attack
+		HitActors.Empty();
+		
+		// Clear weapon hit actors as well
+		ClearWeaponHitActors();
+		
 		// Ensure weapon collision is disabled before starting the attack
 		DisableWeaponCollision();
 		DisableKickCollision();
@@ -223,12 +215,10 @@ void AMyCharacter::PlayAttackMontage()
 				break;
 			case 2:
 				SectionName = FName("Attack3");
-				EnableKickCollision();
 				break;
 			default:
-				SectionName = FName("Attack4");
+				SectionName = FName("Attack1");
 				AttackCount = 0;
-				EnableKickCollision();
 				break;
 		}
 		
@@ -243,6 +233,55 @@ void AMyCharacter::PlayAttackMontage()
 	}
 }
 
+void AMyCharacter::PlayAttackSection(const FName& SectionName, bool bEnableKickCollision)
+{
+	if (ActionState != EActionState::EAS_Unoccupied) return;
+
+	UAnimInstance* AnimInstance = GetMesh() ? GetMesh()->GetAnimInstance() : nullptr;
+	if (!AnimInstance || !AttackMontage) return;
+
+	// Reset per-attack state
+	HitActors.Empty();
+	ClearWeaponHitActors();
+	DisableWeaponCollision();
+	DisableKickCollision();
+
+	// Enter attacking state and lock rotation
+	if (GetCharacterMovement())
+	{
+		GetCharacterMovement()->bOrientRotationToMovement = false;
+		GetCharacterMovement()->bUseControllerDesiredRotation = true;
+	}
+	ActionState = EActionState::EAS_Attacking;
+
+	AnimInstance->Montage_Play(AttackMontage, 1.0f);
+	AnimInstance->Montage_JumpToSection(SectionName, AttackMontage);
+
+	if (bEnableKickCollision)
+	{
+		EnableKickCollision();
+	}
+
+	FOnMontageEnded EndDelegate;
+	EndDelegate.BindUObject(this, &AMyCharacter::OnMontageEnded);
+	AnimInstance->Montage_SetEndDelegate(EndDelegate, AttackMontage);
+}
+
+void AMyCharacter::CrescentKick()
+{
+	PlayAttackMontage();
+}
+
+void AMyCharacter::HurricaneKick()
+{
+	PlayAttackMontage();
+}
+
+void AMyCharacter::SpinAttack()
+{
+	PlayAttackMontage();
+}
+
 void AMyCharacter::OnMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 {
 	if (!bInterrupted)
@@ -253,8 +292,37 @@ void AMyCharacter::OnMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 
 void AMyCharacter::OnKickBoxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	if (OtherActor && OtherActor != this)
+	// Check if we have a valid actor and it's not ourselves
+	if (!OtherActor || OtherActor == this)
 	{
+		return;
+	}
+
+	// Check if we're currently attacking
+	if (ActionState != EActionState::EAS_Attacking)
+	{
+		return;
+	}
+
+	// Check if the other actor is part of our character (prevent self-damage)
+	if (OtherActor == GetOwner() || OtherActor->IsAttachedTo(this))
+	{
+		return;
+	}
+
+	// Check if we've already hit this actor in this attack
+	if (HitActors.Contains(OtherActor))
+	{
+		return;
+	}
+
+	// Check if the other actor is alive (implements hit interface)
+	IHitInterface* HitInterface = Cast<IHitInterface>(OtherActor);
+	if (HitInterface)
+	{
+		// Add this actor to our hit list to prevent multiple hits
+		HitActors.Add(OtherActor);
+		
 		// Apply damage to the hit actor
 		UGameplayStatics::ApplyDamage(
 			OtherActor,
@@ -265,24 +333,28 @@ void AMyCharacter::OnKickBoxOverlap(UPrimitiveComponent* OverlappedComp, AActor*
 		);
 
 		// Trigger hit reaction
-		IHitInterface* HitInterface = Cast<IHitInterface>(OtherActor);
-		if (HitInterface)
-		{
-			HitInterface->GetHit(SweepResult.ImpactPoint);
-		}
+		HitInterface->GetHit(SweepResult.ImpactPoint);
+		
+		UE_LOG(LogTemp, Warning, TEXT("OnKickBoxOverlap: Hit %s with kick damage"), *OtherActor->GetName());
 	}
 }
 
 void AMyCharacter::EnableKickCollision()
 {
-    if (KickBoxLeft)
+    // Add a small delay to prevent rapid-fire hits
+    FTimerHandle TimerHandle;
+    GetWorld()->GetTimerManager().SetTimer(TimerHandle, [this]()
     {
-        KickBoxLeft->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-    }
-    if (KickBoxRight)
-    {
-        KickBoxRight->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-    }
+        if (KickBoxLeft)
+        {
+            KickBoxLeft->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+        }
+        if (KickBoxRight)
+        {
+            KickBoxRight->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+        }
+        UE_LOG(LogTemp, Warning, TEXT("EnableKickCollision: Kick collision enabled after delay"));
+    }, 0.1f, false); // 0.1 second delay
 }
 
 void AMyCharacter::DisableKickCollision()
@@ -301,6 +373,9 @@ void AMyCharacter::AttackEnd()
 {
 	ActionState = EActionState::EAS_Unoccupied;
 	DisableKickCollision();
+	
+	// Clear the hit actors list for the next attack
+	HitActors.Empty();
 	
 	// Disable weapon collision when attack ends
 	if (WeaponBox)
@@ -374,24 +449,45 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	{
 		// Bind the movement action
 		EnhancedInputComponent->BindAction(MovementAction, ETriggerEvent::Triggered, this, &AMyCharacter::Move);
-		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Triggered, this, &AMyCharacter::Jump);
+		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &AMyCharacter::Jump);
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AMyCharacter::Look);
-		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Triggered, this, &AMyCharacter::Attack);
-
-	}
 	
+
+		// Optional: bind explicit variants if mapped in IMC
+		if (CrescentKickAction)
+		{
+			EnhancedInputComponent->BindAction(CrescentKickAction, ETriggerEvent::Started, this, &AMyCharacter::CrescentKick);
+		}
+		if (HurricaneKickAction)
+		{
+			EnhancedInputComponent->BindAction(HurricaneKickAction, ETriggerEvent::Started, this, &AMyCharacter::HurricaneKick);
+		}
+		if (SpinAttackAction)
+		{
+			EnhancedInputComponent->BindAction(SpinAttackAction, ETriggerEvent::Started, this, &AMyCharacter::SpinAttack);
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("SetupPlayerInputComponent: Failed to cast to EnhancedInputComponent"));
+	}
 }
 
 // Add new functions to enable/disable weapon collision
 void AMyCharacter::EnableWeaponCollision()
 {
-	if (WeaponBox)
-	if (WeaponBox)
+	// Add a small delay to prevent rapid-fire hits
+	FTimerHandle TimerHandle;
+	GetWorld()->GetTimerManager().SetTimer(TimerHandle, [this]()
 	{
-		WeaponBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-		WeaponBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
-		WeaponBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldDynamic, ECollisionResponse::ECR_Overlap);
-	}
+		if (WeaponBox)
+		{
+			WeaponBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+			WeaponBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
+			WeaponBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldDynamic, ECollisionResponse::ECR_Overlap);
+		}
+		UE_LOG(LogTemp, Warning, TEXT("EnableWeaponCollision: Weapon collision enabled after delay"));
+	}, 0.1f, false); // 0.1 second delay
 }
 
 void AMyCharacter::DisableWeaponCollision()
@@ -399,6 +495,22 @@ void AMyCharacter::DisableWeaponCollision()
 	if (WeaponBox)
 	{
 		WeaponBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+}
+
+void AMyCharacter::ClearWeaponHitActors()
+{
+	// Clear weapon hit actors if we have a weapon
+	if (WeaponBox)
+	{
+		// Try to get the weapon actor and clear its hit list
+		if (AActor* WeaponActor = WeaponBox->GetOwner())
+		{
+			if (AWeapon* Weapon = Cast<AWeapon>(WeaponActor))
+			{
+				Weapon->ClearHitActors();
+			}
+		}
 	}
 }
 

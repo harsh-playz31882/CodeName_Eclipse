@@ -84,11 +84,51 @@ bool AWeapon::BoxTrace(FHitResult& OutHit, bool bDrawDebug)
 
 void AWeapon::OnBoxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
+    // Check if we have a valid actor and it's not ourselves
+    if (!OtherActor || OtherActor == this)
+    {
+        return;
+    }
+
+    // Check if the other actor is our owner (prevent self-damage)
+    if (OtherActor == GetOwner())
+    {
+        return;
+    }
+
+    // Check if we've already hit this actor in this attack
+    if (HitActors.Contains(OtherActor))
+    {
+        return;
+    }
+
+    // If our owner is a character, also de-duplicate against their per-attack list
+    if (AActor* OwnerActor = GetOwner())
+    {
+        if (AMyCharacter* OwnerChar = Cast<AMyCharacter>(OwnerActor))
+        {
+            if (OwnerChar->HasAlreadyHit(OtherActor))
+            {
+                return;
+            }
+        }
+    }
+
     FHitResult BoxHit;
     bool bHit = BoxTrace(BoxHit, false);
 
     if (BoxHit.GetActor())
     {
+        // Add this actor to our hit list to prevent multiple hits
+        HitActors.Add(OtherActor);
+        if (AActor* OwnerActor = GetOwner())
+        {
+            if (AMyCharacter* OwnerChar = Cast<AMyCharacter>(OwnerActor))
+            {
+                OwnerChar->RecordHit(OtherActor);
+            }
+        }
+        
         // Apply damage to the hit actor
         UGameplayStatics::ApplyDamage(
             BoxHit.GetActor(),
@@ -103,6 +143,8 @@ void AWeapon::OnBoxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherAct
         {
             HitInterface->GetHit(BoxHit.ImpactPoint);
         }
+        
+        UE_LOG(LogTemp, Warning, TEXT("OnBoxOverlap: Hit %s with weapon damage"), *OtherActor->GetName());
     }
 }
 
@@ -110,5 +152,11 @@ void AWeapon::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+}
+
+void AWeapon::ClearHitActors()
+{
+	HitActors.Empty();
+	UE_LOG(LogTemp, Warning, TEXT("Weapon: Hit actors list cleared"));
 }
 

@@ -40,6 +40,10 @@ protected:
 	UPROPERTY(EditAnywhere, Category = WeaponProperties)
 	float Damage = 20.f;
 
+	// Track which actors have been hit to prevent multiple hits
+	UPROPERTY()
+	TArray<AActor*> HitActors;
+
 	// Helper function to perform box trace
 	bool BoxTrace(FHitResult& OutHit, bool bDrawDebug = false);
 
@@ -58,4 +62,8 @@ protected:
 public:
 	FORCEINLINE UBoxComponent* GetWeaponBox() const { return WeaponBox; }
 	FORCEINLINE UStaticMeshComponent* GetSwordMesh() const { return SwordMesh; }
+	
+	// Clear the hit actors list (call this when starting a new attack)
+	UFUNCTION(BlueprintCallable, Category = "Weapon")
+	void ClearHitActors();
 };

@@ -27,8 +27,15 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
 	virtual void PlayAttackMontage() override;
-	virtual void Attack() override;
 	virtual void Jump() override;
+
+	// Dedicated special attacks
+	void CrescentKick();
+	void HurricaneKick();
+	void SpinAttack();
+
+	// Helper to play a specific montage section explicitly
+	void PlayAttackSection(const FName& SectionName, bool bEnableKickCollision);
 
 	FORCEINLINE ECharacterState GetCharacterState() const { return CharacterState; }
 
@@ -38,6 +45,13 @@ public:
 
 	void EnableWeaponCollision();
 	void DisableWeaponCollision();
+
+	// Clear weapon hit actors (call this when starting a new attack)
+	void ClearWeaponHitActors();
+
+	// Query/record hits (used by weapon to avoid double damage if owner routes weapon hits)
+	bool HasAlreadyHit(AActor* Other) const { return HitActors.Contains(Other); }
+	void RecordHit(AActor* Other) { if (Other) { HitActors.AddUnique(Other); } }
 
 protected:
 	virtual void BeginPlay() override;
@@ -54,8 +68,16 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* JumpAction;
 
+
 	UPROPERTY(EditAnywhere, Category = "Input")
-	UInputAction* AttackAction;
+	UInputAction* CrescentKickAction;
+
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* HurricaneKickAction;
+
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* SpinAttackAction;
+
 
 
 	void Move(const FInputActionValue& Value);
@@ -107,6 +129,10 @@ private:
 	ECharacterState CharacterState = ECharacterState::ECS_Unequipped;
 
 	int32 AttackCount = 0;
+
+	// Track which actors have been hit during the current attack to prevent multiple hits
+	UPROPERTY()
+	TArray<AActor*> HitActors;
 
 	UFUNCTION()
 	void OnKickBoxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
