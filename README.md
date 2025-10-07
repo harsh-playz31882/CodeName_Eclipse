@@ -4,16 +4,16 @@
 
 **Project_Eclipse** is a medium-paced, immersive 3D fighting game featuring a cast of unique characters, dynamic combat mechanics, and a captivating storyline combined with multiplayer system.
 
-## 🎮 Features
+## Vision
 
 - **Diverse Characters** – Choose from a growing roster of warriors, each with unique abilities and backstories.
 - **Dual Realms** – Battle across environments in both light and shadow dimensions.
-- **Cinematic Combat** – Smooth animations, dynamic combat mechanics
-- **AI-Powered Opponents** – Adaptive enemy behavior for realistic gameplay.
+- **Cinematic Combat** – Dynamic combat mechanics
+- ** StoryMode and Multiplayer** – Engaging Storyline
 
 ---
 
-## 🛠️ Platforms
+## Platforms
 
 - **Unreal Engine** – For high-quality 3D rendering and physics.
 - **Blender and Other Multiple AI Tools** – For character and environment modeling.
