@@ -9,7 +9,7 @@
 - **Diverse Characters** – Choose from a growing roster of warriors, each with unique abilities and backstories.
 - **Dual Realms** – Battle across environments in both light and shadow dimensions.
 - **Cinematic Combat** – Dynamic combat mechanics
-- ** StoryMode and Multiplayer** – Engaging Storyline
+- **StoryMode and Multiplayer** – Engaging Storyline
 
 ---
 
