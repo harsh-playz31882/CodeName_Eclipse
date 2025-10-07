@@ -99,6 +99,14 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	float AttackDamage = 20.f;
 
+	// Socket on the skeletal mesh to attach the enemy WeaponBox to
+	UPROPERTY(EditAnywhere, Category = "Combat")
+	FName WeaponSocketName = FName("RightHandSocket");
+
+    // Debug: disable all collisions on this enemy to isolate self-hit issues
+    UPROPERTY(EditAnywhere, Category = "Debug")
+    bool bDisableAllCollision = false;
+
 private:
 	//Components
 	UPROPERTY(VisibleAnywhere)

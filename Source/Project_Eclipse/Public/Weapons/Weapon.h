@@ -7,7 +7,6 @@
 #include "Weapon.generated.h"
 
 class UStaticMeshComponent;
-class USphereComponent;
 class UBoxComponent;
 class USceneComponent;
 
@@ -25,9 +24,6 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UStaticMeshComponent* SwordMesh;
 
-	UPROPERTY(VisibleAnywhere)
-	USphereComponent* Sphere;
-
 	UPROPERTY(VisibleAnywhere, Category=WeaponProperties)
 	UBoxComponent* WeaponBox;
 
@@ -44,15 +40,9 @@ protected:
 	UPROPERTY()
 	TArray<AActor*> HitActors;
 
-	// Helper function to perform box trace
-	bool BoxTrace(FHitResult& OutHit, bool bDrawDebug = false);
+    // Helper function to perform box trace (debug drawing removed)
+    bool BoxTrace(FHitResult& OutHit);
 
-	UFUNCTION()
-	void OnSphereOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
-
-	UFUNCTION()
-    void OnSphereEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
-	
 	UFUNCTION()
 	void OnBoxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 

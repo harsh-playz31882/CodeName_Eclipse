@@ -2,7 +2,6 @@
 
 
 #include "Weapons/Weapon.h"
-#include "Components/SphereComponent.h"
 #include "Characters/MyCharacter.h"
 #include "Components/BoxComponent.h"
 #include "Kismet/KismetSystemLibrary.h"
@@ -17,9 +16,6 @@ AWeapon::AWeapon()
 
 	SwordMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("SwordMesh"));
 	RootComponent = SwordMesh;
-
-	Sphere = CreateDefaultSubobject<USphereComponent>(TEXT("Sphere"));
-	Sphere->SetupAttachment(GetRootComponent());
 
 	WeaponBox = CreateDefaultSubobject<UBoxComponent>(TEXT("Weapon Box"));
 	WeaponBox->SetupAttachment(GetRootComponent());
@@ -39,27 +35,17 @@ AWeapon::AWeapon()
 void AWeapon::BeginPlay()
 {
 	Super::BeginPlay();
-	Sphere->OnComponentBeginOverlap.AddDynamic(this, &AWeapon::OnSphereOverlap);
-	Sphere->OnComponentEndOverlap.AddDynamic(this, &AWeapon::OnSphereEndOverlap);
 	WeaponBox->OnComponentBeginOverlap.AddDynamic(this, &AWeapon::OnBoxOverlap);
 
 }
 
-void AWeapon::OnSphereOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+bool AWeapon::BoxTrace(FHitResult& OutHit)
 {
-	
-	const FString OtherActorName = OtherActor->GetName();
-}
+    if (!BoxTraceStart || !BoxTraceEnd)
+    {
+        return false;
+    }
 
-
-void AWeapon::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
-{
-	const FString OtherActorName = FString("Ending overlap with") + OtherActor->GetName();
-
-}
-
-bool AWeapon::BoxTrace(FHitResult& OutHit, bool bDrawDebug)
-{
     const FVector Start = BoxTraceStart->GetComponentLocation();
     const FVector End = BoxTraceEnd->GetComponentLocation();
     const FVector BoxHalfSize = FVector(5.f, 5.f, 5.f);
@@ -76,7 +62,7 @@ bool AWeapon::BoxTrace(FHitResult& OutHit, bool bDrawDebug)
         ETraceTypeQuery::TraceTypeQuery1,
         false,
         ActorsToIgnore,
-        bDrawDebug ? EDrawDebugTrace::ForDuration : EDrawDebugTrace::None,
+        EDrawDebugTrace::None,
         OutHit,
         true
     );
@@ -115,7 +101,7 @@ void AWeapon::OnBoxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherAct
     }
 
     FHitResult BoxHit;
-    bool bHit = BoxTrace(BoxHit, false);
+    bool bHit = BoxTrace(BoxHit);
 
     if (BoxHit.GetActor())
     {
@@ -130,10 +116,20 @@ void AWeapon::OnBoxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherAct
         }
         
         // Apply damage to the hit actor
+        AController* DamageInstigatorController = nullptr;
+        if (APawn* InstPawn = GetInstigator())
+        {
+            DamageInstigatorController = InstPawn->GetController();
+        }
+        else if (APawn* OwnerPawn = Cast<APawn>(GetOwner()))
+        {
+            DamageInstigatorController = OwnerPawn->GetController();
+        }
+
         UGameplayStatics::ApplyDamage(
             BoxHit.GetActor(),
             Damage,
-            GetInstigator()->GetController(),
+            DamageInstigatorController,
             this,
             UDamageType::StaticClass()
         );

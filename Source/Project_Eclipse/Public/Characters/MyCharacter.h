@@ -9,6 +9,7 @@
 
 class USpringArmComponent;
 class UCameraComponent;
+
 class UAnimMontage;
 class UBoxComponent;
 class UCharacter_Overlay;
@@ -29,13 +30,19 @@ public:
 	virtual void PlayAttackMontage() override;
 	virtual void Jump() override;
 
-	// Dedicated special attacks
-	void CrescentKick();
-	void HurricaneKick();
-	void SpinAttack();
 
-	// Helper to play a specific montage section explicitly
-	void PlayAttackSection(const FName& SectionName, bool bEnableKickCollision);
+	// Single Attack function for enhanced input bindings
+	void Attack();
+
+	// Dedicated attacks mapped to specific montage sections
+	UFUNCTION()
+	void Attack1();
+
+	UFUNCTION()
+	void Attack2();
+
+	UFUNCTION()
+	void Attack3();
 
 	FORCEINLINE ECharacterState GetCharacterState() const { return CharacterState; }
 
@@ -70,13 +77,13 @@ protected:
 
 
 	UPROPERTY(EditAnywhere, Category = "Input")
-	UInputAction* CrescentKickAction;
+	UInputAction* AttackAction1;
 
 	UPROPERTY(EditAnywhere, Category = "Input")
-	UInputAction* HurricaneKickAction;
+	UInputAction* AttackAction2;
 
 	UPROPERTY(EditAnywhere, Category = "Input")
-	UInputAction* SpinAttackAction;
+	UInputAction* AttackAction3;
 
 
 
@@ -107,11 +114,16 @@ protected:
 private:
 	void InitializeCharacterOverlay();
 
-	UPROPERTY(VisibleAnywhere)
-	USpringArmComponent* CameraBoom;
+	// Helper to play a specific montage section without cycling
+	bool PlayAttackMontageSection(FName SectionName);
 
-	UPROPERTY(VisibleAnywhere)
-	UCameraComponent* ViewCamera;
+    // Camera setup
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera", meta = (AllowPrivateAccess = "true"))
+    USpringArmComponent* CameraBoom;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera", meta = (AllowPrivateAccess = "true"))
+    UCameraComponent* ViewCamera;
+
 
 	// Add two box components for both legs
 	UPROPERTY(VisibleAnywhere)

@@ -1,6 +1,4 @@
 #include "Characters/MyCharacter.h"
-#include "GameFramework/SpringArmComponent.h"
-#include "Camera/CameraComponent.h"
 #include "Animation/AnimMontage.h"
 #include "Animation/AnimInstance.h"
 #include "Components/BoxComponent.h"
@@ -21,6 +19,8 @@
 #include "Components/InputComponent.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "GameFramework/SpringArmComponent.h"
+#include "Camera/CameraComponent.h"
 
 
 
@@ -33,7 +33,7 @@ AMyCharacter::AMyCharacter()
     bUseControllerRotationYaw = false;
     bUseControllerRotationRoll = false;
 
-    // Create and setup camera components first
+    // Camera boom and follow camera
     CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
     CameraBoom->SetupAttachment(GetRootComponent());
     CameraBoom->TargetArmLength = 300.f;
@@ -41,11 +41,12 @@ AMyCharacter::AMyCharacter()
     CameraBoom->bInheritPitch = true;
     CameraBoom->bInheritYaw = true;
     CameraBoom->bInheritRoll = false;
-    CameraBoom->SetRelativeRotation(FRotator(-15.f, 0.f, 0.f));
 
     ViewCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("ViewCamera"));
     ViewCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
     ViewCamera->bUsePawnControlRotation = false;
+    ViewCamera->FieldOfView = 90.f;
+
 
     // Create kick box components for both legs
     KickBoxLeft = CreateDefaultSubobject<UBoxComponent>(TEXT("Kick Box Left"));
@@ -60,10 +61,9 @@ AMyCharacter::AMyCharacter()
     KickBoxRight->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
     KickBoxRight->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
 
-    // Set up montages
-    AttackMontage = CreateDefaultSubobject<UAnimMontage>(TEXT("/Game/Animations/test_character/AM_Attack.AM_Attack"));
-    HitReactMontage = CreateDefaultSubobject<UAnimMontage>(TEXT("/Game/Animations/test_character/AM_HitReact.AM_HitReact"));
+    // Montages should be set in Blueprint editor, not in constructor
 }
+
 
 void AMyCharacter::BeginPlay()
 {
@@ -185,102 +185,71 @@ void AMyCharacter::Jump()
 }
 
 
+void AMyCharacter::Attack()
+{
+    // Keep for compatibility if needed: default to Attack1
+    Attack1();
+}
+
 void AMyCharacter::PlayAttackMontage()
 {
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if (AnimInstance && AttackMontage)
-	{
-		// Clear the hit actors list for this new attack
-		HitActors.Empty();
-		
-		// Clear weapon hit actors as well
-		ClearWeaponHitActors();
-		
-		// Ensure weapon collision is disabled before starting the attack
-		DisableWeaponCollision();
-		DisableKickCollision();
-		
-		// Set montage blend settings for smoother transitions
-		AnimInstance->Montage_Play(AttackMontage, 1.0f);
-		
-		// Cycle through attack animations
-		FName SectionName;
-		switch (AttackCount)
-		{
-			case 0:
-				SectionName = FName("Attack1");
-				break;
-			case 1:
-				SectionName = FName("Attack2");
-				break;
-			case 2:
-				SectionName = FName("Attack3");
-				break;
-			default:
-				SectionName = FName("Attack1");
-				AttackCount = 0;
-				break;
-		}
-		
-		// Use blend time for smoother section transitions
-		AnimInstance->Montage_JumpToSection(SectionName, AttackMontage);
-		AttackCount++;
-
-		// Bind the montage end delegate
-		FOnMontageEnded EndDelegate;
-		EndDelegate.BindUObject(this, &AMyCharacter::OnMontageEnded);
-		AnimInstance->Montage_SetEndDelegate(EndDelegate, AttackMontage);
-	}
+    // Legacy path: default to first section
+    PlayAttackMontageSection(FName("Attack1"));
 }
 
-void AMyCharacter::PlayAttackSection(const FName& SectionName, bool bEnableKickCollision)
+bool AMyCharacter::PlayAttackMontageSection(FName SectionName)
 {
-	if (ActionState != EActionState::EAS_Unoccupied) return;
+    if (ActionState != EActionState::EAS_Unoccupied)
+    {
+        return false;
+    }
 
-	UAnimInstance* AnimInstance = GetMesh() ? GetMesh()->GetAnimInstance() : nullptr;
-	if (!AnimInstance || !AttackMontage) return;
+    UAnimInstance* AnimInstance = GetMesh() ? GetMesh()->GetAnimInstance() : nullptr;
+    if (!AnimInstance || !AttackMontage)
+    {
+        return false;
+    }
 
-	// Reset per-attack state
-	HitActors.Empty();
-	ClearWeaponHitActors();
-	DisableWeaponCollision();
-	DisableKickCollision();
+    ActionState = EActionState::EAS_Attacking;
 
-	// Enter attacking state and lock rotation
-	if (GetCharacterMovement())
-	{
-		GetCharacterMovement()->bOrientRotationToMovement = false;
-		GetCharacterMovement()->bUseControllerDesiredRotation = true;
-	}
-	ActionState = EActionState::EAS_Attacking;
+    if (GetCharacterMovement())
+    {
+        GetCharacterMovement()->bOrientRotationToMovement = false;
+        GetCharacterMovement()->bUseControllerDesiredRotation = true;
+    }
 
-	AnimInstance->Montage_Play(AttackMontage, 1.0f);
-	AnimInstance->Montage_JumpToSection(SectionName, AttackMontage);
+    HitActors.Empty();
+    ClearWeaponHitActors();
+    DisableWeaponCollision();
+    DisableKickCollision();
 
-	if (bEnableKickCollision)
-	{
-		EnableKickCollision();
-	}
+    AnimInstance->Montage_Play(AttackMontage, 1.0f);
+    AnimInstance->Montage_JumpToSection(SectionName, AttackMontage);
 
-	FOnMontageEnded EndDelegate;
-	EndDelegate.BindUObject(this, &AMyCharacter::OnMontageEnded);
-	AnimInstance->Montage_SetEndDelegate(EndDelegate, AttackMontage);
+    FOnMontageEnded EndDelegate;
+    EndDelegate.BindUObject(this, &AMyCharacter::OnMontageEnded);
+    AnimInstance->Montage_SetEndDelegate(EndDelegate, AttackMontage);
+
+    EnableKickCollision();
+    return true;
 }
 
-void AMyCharacter::CrescentKick()
+void AMyCharacter::Attack1()
 {
-	PlayAttackMontage();
+    PlayAttackMontageSection(FName("Attack1"));
 }
 
-void AMyCharacter::HurricaneKick()
+void AMyCharacter::Attack2()
 {
-	PlayAttackMontage();
+    PlayAttackMontageSection(FName("Attack2"));
 }
 
-void AMyCharacter::SpinAttack()
+void AMyCharacter::Attack3()
 {
-	PlayAttackMontage();
+    PlayAttackMontageSection(FName("Attack3"));
 }
+
+
 
 void AMyCharacter::OnMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 {
@@ -447,25 +416,15 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 
 	if (UEnhancedInputComponent* EnhancedInputComponent = CastChecked<UEnhancedInputComponent>(PlayerInputComponent))
 	{
-		// Bind the movement action
-		EnhancedInputComponent->BindAction(MovementAction, ETriggerEvent::Triggered, this, &AMyCharacter::Move);
-		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &AMyCharacter::Jump);
-		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AMyCharacter::Look);
-	
+        EnhancedInputComponent->BindAction(MovementAction, ETriggerEvent::Triggered, this, &AMyCharacter::Move);
+        EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &AMyCharacter::Jump);
+        EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AMyCharacter::Look);
 
-		// Optional: bind explicit variants if mapped in IMC
-		if (CrescentKickAction)
-		{
-			EnhancedInputComponent->BindAction(CrescentKickAction, ETriggerEvent::Started, this, &AMyCharacter::CrescentKick);
-		}
-		if (HurricaneKickAction)
-		{
-			EnhancedInputComponent->BindAction(HurricaneKickAction, ETriggerEvent::Started, this, &AMyCharacter::HurricaneKick);
-		}
-		if (SpinAttackAction)
-		{
-			EnhancedInputComponent->BindAction(SpinAttackAction, ETriggerEvent::Started, this, &AMyCharacter::SpinAttack);
-		}
+        // Bind specific attack inputs to fixed sections
+        EnhancedInputComponent->BindAction(AttackAction1, ETriggerEvent::Triggered, this, &AMyCharacter::Attack1);
+        EnhancedInputComponent->BindAction(AttackAction2, ETriggerEvent::Triggered, this, &AMyCharacter::Attack2);
+        EnhancedInputComponent->BindAction(AttackAction3, ETriggerEvent::Triggered, this, &AMyCharacter::Attack3);
+
 	}
 	else
 	{

@@ -88,6 +88,26 @@ void AEnemy::BeginPlay()
 
 	UE_LOG(LogTemp, Warning, TEXT("Enemy BeginPlay started"));
 
+    if (bDisableAllCollision)
+    {
+        if (UCapsuleComponent* Capsule = GetCapsuleComponent())
+        {
+            // Keep capsule colliding with the world so it stands on the ground, but ignore pawns
+            Capsule->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+            Capsule->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+            Capsule->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldStatic, ECollisionResponse::ECR_Block);
+        }
+        if (USkeletalMeshComponent* SkeletalMesh = GetMesh())
+        {
+            SkeletalMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        }
+        if (WeaponBox)
+        {
+            WeaponBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        }
+        UE_LOG(LogTemp, Warning, TEXT("Enemy: All collisions disabled (debug)"));
+    }
+
 	if (HealthBarWidget1)
 	{
 		HealthBarWidget1->SetHealthPercent(1.f);
@@ -129,8 +149,32 @@ void AEnemy::BeginPlay()
 	// Set up weapon collision
 	if (WeaponBox)
 	{
+		// Ensure sensible default size and overlap settings
+		WeaponBox->SetBoxExtent(FVector(15.f, 30.f, 30.f));
+		WeaponBox->SetGenerateOverlapEvents(true);
+		WeaponBoxCollision();
+
+		// Try to attach to right hand socket if available; else keep a forward offset
+        if (USkeletalMeshComponent* SkeletalMesh = GetMesh())
+        {
+            const FName HandSocketName = WeaponSocketName;
+            if (SkeletalMesh->DoesSocketExist(HandSocketName))
+            {
+                WeaponBox->AttachToComponent(SkeletalMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, HandSocketName);
+            }
+            else
+            {
+                // Fallback: place box slightly forward from capsule so close-range hits still register
+                WeaponBox->AttachToComponent(GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
+                WeaponBox->SetRelativeLocation(FVector(60.f, 0.f, 50.f));
+            }
+        }
+
+		// Start with collision disabled; AnimNotifies will toggle during attacks
+		WeaponBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
 		WeaponBox->OnComponentBeginOverlap.AddDynamic(this, &AEnemy::OnWeaponBoxOverlap);
-		UE_LOG(LogTemp, Warning, TEXT("Weapon box overlap delegate bound"));
+		UE_LOG(LogTemp, Warning, TEXT("Weapon box configured and overlap delegate bound"));
 	}
 	else
 	{
@@ -163,9 +207,29 @@ void AEnemy::WeaponBoxCollision()
 
 bool AEnemy::InTargetRange(AActor* Target, double Radius)
 {
-	if (Target == nullptr) return false;
-	const double DistanceToTarget = (Target->GetActorLocation() - GetActorLocation()).Size();
-	return DistanceToTarget <= Radius;
+    if (Target == nullptr) return false;
+    // Use horizontal distance to avoid Z offsets preventing attacks
+    const double DistanceToTarget = FVector::Dist2D(Target->GetActorLocation(), GetActorLocation());
+
+    // Account for capsule radii so comparisons use surface-to-surface distance
+    float SelfRadius = 0.f;
+    if (UCapsuleComponent* SelfCapsule = GetCapsuleComponent())
+    {
+        SelfRadius = SelfCapsule->GetScaledCapsuleRadius();
+    }
+
+    float TargetRadius = 0.f;
+    if (const ACharacter* TargetChar = Cast<ACharacter>(Target))
+    {
+        if (const UCapsuleComponent* TargetCapsule = TargetChar->GetCapsuleComponent())
+        {
+            TargetRadius = TargetCapsule->GetScaledCapsuleRadius();
+        }
+    }
+
+    const float Buffer = 30.f; // generous buffer for large capsules
+    const double EffectiveRadius = static_cast<double>(Radius + SelfRadius + TargetRadius + Buffer);
+    return DistanceToTarget <= EffectiveRadius;
 }
 
 void AEnemy::MoveToTarget(AActor* Target)
@@ -196,10 +260,28 @@ void AEnemy::MoveToTarget(AActor* Target)
 	// Stop any existing movement
 	EnemyController->StopMovement();
 
-	// Start new movement
-	FAIMoveRequest MoveRequest;
-	MoveRequest.SetGoalActor(Target);
-	MoveRequest.SetAcceptanceRadius(100.f);
+    // Start new movement
+    FAIMoveRequest MoveRequest;
+    MoveRequest.SetGoalActor(Target);
+
+    // Stop distance should be measured from capsule surfaces, not centers
+    float SelfRadius = 0.f;
+    if (UCapsuleComponent* SelfCapsule = GetCapsuleComponent())
+    {
+        SelfRadius = SelfCapsule->GetScaledCapsuleRadius();
+    }
+    float TargetRadius = 0.f;
+    if (ACharacter* TargetChar = Cast<ACharacter>(Target))
+    {
+        if (UCapsuleComponent* TargetCapsule = TargetChar->GetCapsuleComponent())
+        {
+            TargetRadius = TargetCapsule->GetScaledCapsuleRadius();
+        }
+    }
+    const float StopBuffer = 30.f; // generous buffer for large capsules
+    const float DesiredStopFromCenters = AttackRange + SelfRadius + TargetRadius + StopBuffer;
+    const float AcceptanceRadius = FMath::Max(40.f, DesiredStopFromCenters);
+    MoveRequest.SetAcceptanceRadius(AcceptanceRadius);
 	MoveRequest.SetUsePathfinding(true);
 	MoveRequest.SetAllowPartialPath(true);
 
@@ -427,17 +509,6 @@ void AEnemy::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 
 void AEnemy::GetHit(const FVector& ImpactPoint)
 {
-	
-	/*
-	UWorld* World = GetWorld();
-	FVector Location = GetActorLocation();
-
-	if (World)
-	{
-		DrawDebugSphere(World, Location, 10.f, 24, FColor::Red, false, 3.f);
-	}
-	*/
-	
 	
 	if (Attributes && Attributes->IsAlive()) 
 	{
