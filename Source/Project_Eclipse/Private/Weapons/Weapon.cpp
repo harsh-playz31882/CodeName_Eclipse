@@ -35,7 +35,7 @@ AWeapon::AWeapon()
 void AWeapon::BeginPlay()
 {
 	Super::BeginPlay();
-	WeaponBox->OnComponentBeginOverlap.AddDynamic(this, &AWeapon::OnBoxOverlap);
+    WeaponBox->OnComponentBeginOverlap.AddDynamic(this, &AWeapon::OnBoxOverlap);
 
 }
 
@@ -52,6 +52,22 @@ bool AWeapon::BoxTrace(FHitResult& OutHit)
 
     TArray<AActor*> ActorsToIgnore;
     ActorsToIgnore.Add(this);
+    // Also ignore the weapon owner and anything attached to the owner to prevent self-hits
+    if (AActor* OwnerActor = GetOwner())
+    {
+        ActorsToIgnore.Add(OwnerActor);
+
+        // Collect all actors attached to the owner recursively (e.g., mesh, sockets, child actors)
+        TSet<AActor*> RecursiveAttached;
+        GatherAttachedActorsRecursive(OwnerActor, RecursiveAttached);
+        for (AActor* AttachedActor : RecursiveAttached)
+        {
+            if (AttachedActor && AttachedActor != OwnerActor)
+            {
+                ActorsToIgnore.Add(AttachedActor);
+            }
+        }
+    }
 
     return UKismetSystemLibrary::BoxTraceSingle(
         this,
@@ -82,6 +98,34 @@ void AWeapon::OnBoxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherAct
         return;
     }
 
+    // Ignore anything attached to the same owner (e.g., owner's mesh, child actors, equipment)
+    if (AActor* OwnerActor = GetOwner())
+    {
+        // If the other actor is attached to our owner, ignore
+        if (OtherActor->IsAttachedTo(OwnerActor))
+        {
+            return;
+        }
+        // If our owner is attached to the other actor (rare), also ignore
+        if (OwnerActor->IsAttachedTo(OtherActor))
+        {
+            return;
+        }
+        // If the overlapping component belongs to our owner (component-level self overlap), ignore
+        if (OtherComp && OtherComp->GetOwner() == OwnerActor)
+        {
+            return;
+        }
+
+        // If OtherActor is any descendant attachment of our owner, ignore
+        TSet<AActor*> RecursiveAttached;
+        GatherAttachedActorsRecursive(OwnerActor, RecursiveAttached);
+        if (RecursiveAttached.Contains(OtherActor))
+        {
+            return;
+        }
+    }
+
     // Check if we've already hit this actor in this attack
     if (HitActors.Contains(OtherActor))
     {
@@ -103,8 +147,24 @@ void AWeapon::OnBoxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherAct
     FHitResult BoxHit;
     bool bHit = BoxTrace(BoxHit);
 
-    if (BoxHit.GetActor())
+    if (bHit && BoxHit.GetActor())
     {
+        // Extra safety: ignore owner and attachments from trace result as well
+        if (AActor* OwnerActor = GetOwner())
+        {
+            if (BoxHit.GetActor() == OwnerActor || BoxHit.GetActor()->IsAttachedTo(OwnerActor) || OwnerActor->IsAttachedTo(BoxHit.GetActor()))
+            {
+                return;
+            }
+
+            TSet<AActor*> RecursiveAttached;
+            GatherAttachedActorsRecursive(OwnerActor, RecursiveAttached);
+            if (RecursiveAttached.Contains(BoxHit.GetActor()))
+            {
+                return;
+            }
+        }
+
         // Add this actor to our hit list to prevent multiple hits
         HitActors.Add(OtherActor);
         if (AActor* OwnerActor = GetOwner())
@@ -140,7 +200,35 @@ void AWeapon::OnBoxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherAct
             HitInterface->GetHit(BoxHit.ImpactPoint);
         }
         
-        UE_LOG(LogTemp, Warning, TEXT("OnBoxOverlap: Hit %s with weapon damage"), *OtherActor->GetName());
+        UE_LOG(LogTemp, Warning, TEXT("OnBoxOverlap: Hit %s with weapon damage"), *BoxHit.GetActor()->GetName());
+    }
+}
+
+void AWeapon::OnBoxEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+    // Remove from per-weapon hit list so repeated valid hits can register across separate swings
+    if (OtherActor)
+    {
+        HitActors.Remove(OtherActor);
+    }
+}
+
+void AWeapon::GatherAttachedActorsRecursive(AActor* RootActor, TSet<AActor*>& OutAttached)
+{
+    if (!RootActor || OutAttached.Contains(RootActor))
+    {
+        return;
+    }
+
+    TArray<AActor*> DirectChildren;
+    RootActor->GetAttachedActors(DirectChildren);
+    for (AActor* Child : DirectChildren)
+    {
+        if (Child && !OutAttached.Contains(Child))
+        {
+            OutAttached.Add(Child);
+            GatherAttachedActorsRecursive(Child, OutAttached);
+        }
     }
 }
 

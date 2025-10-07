@@ -34,11 +34,6 @@ protected:
 	UFUNCTION(BlueprintCallable)
 	virtual void AttackEnd();
 
-	UPROPERTY(VisibleAnywhere)
-	class UBoxComponent* WeaponBox;
-
-	UFUNCTION()
-	UBoxComponent* GetWeaponBox() const { return WeaponBox; }
 
 	//Animation Montages
 	UPROPERTY(EditDefaultsOnly, Category = Montages)

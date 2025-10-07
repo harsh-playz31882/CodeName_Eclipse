@@ -70,16 +70,6 @@ AEnemy::AEnemy()
 	// Create AI perception component
 	AIPerception = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("AIPerception"));
 
-	// Set up weapon box collision
-	if (WeaponBox)
-	{
-		WeaponBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		WeaponBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-		WeaponBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
-		WeaponBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldDynamic, ECollisionResponse::ECR_Ignore);
-		WeaponBox->IgnoreActorWhenMoving(this, true);
-		WeaponBox->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
-	}
 }
 
 void AEnemy::BeginPlay()
@@ -100,10 +90,6 @@ void AEnemy::BeginPlay()
         if (USkeletalMeshComponent* SkeletalMesh = GetMesh())
         {
             SkeletalMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-        }
-        if (WeaponBox)
-        {
-            WeaponBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
         }
         UE_LOG(LogTemp, Warning, TEXT("Enemy: All collisions disabled (debug)"));
     }
@@ -146,64 +132,12 @@ void AEnemy::BeginPlay()
 		UE_LOG(LogTemp, Warning, TEXT("AI perception is null"));
 	}
 
-	// Set up weapon collision
-	if (WeaponBox)
-	{
-		// Ensure sensible default size and overlap settings
-		WeaponBox->SetBoxExtent(FVector(15.f, 30.f, 30.f));
-		WeaponBox->SetGenerateOverlapEvents(true);
-		WeaponBoxCollision();
-
-		// Try to attach to right hand socket if available; else keep a forward offset
-        if (USkeletalMeshComponent* SkeletalMesh = GetMesh())
-        {
-            const FName HandSocketName = WeaponSocketName;
-            if (SkeletalMesh->DoesSocketExist(HandSocketName))
-            {
-                WeaponBox->AttachToComponent(SkeletalMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, HandSocketName);
-            }
-            else
-            {
-                // Fallback: place box slightly forward from capsule so close-range hits still register
-                WeaponBox->AttachToComponent(GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
-                WeaponBox->SetRelativeLocation(FVector(60.f, 0.f, 50.f));
-            }
-        }
-
-		// Start with collision disabled; AnimNotifies will toggle during attacks
-		WeaponBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-		WeaponBox->OnComponentBeginOverlap.AddDynamic(this, &AEnemy::OnWeaponBoxOverlap);
-		UE_LOG(LogTemp, Warning, TEXT("Weapon box configured and overlap delegate bound"));
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Weapon box is null"));
-	}
 
 	// Start patrolling
 	MoveToTarget(PatrolTarget);
 	UE_LOG(LogTemp, Warning, TEXT("Enemy BeginPlay completed"));
 }
 
-void AEnemy::WeaponBoxCollision()
-{
-	if (WeaponBox)
-	{
-		WeaponBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-		WeaponBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-		// Only detect player pawn
-		WeaponBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
-		// Ignore self collision
-		WeaponBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldDynamic, ECollisionResponse::ECR_Ignore);
-		// Make sure to ignore the enemy's own collision
-		WeaponBox->IgnoreActorWhenMoving(this, true);
-		// Ignore the enemy's own mesh
-		WeaponBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Ignore);
-		// Set collision object type
-		WeaponBox->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
-	}
-}
 
 bool AEnemy::InTargetRange(AActor* Target, double Radius)
 {
@@ -331,12 +265,6 @@ void AEnemy::AttackEnd()
 {
 	Super::AttackEnd();
 	ActionState = EActionState::EAS_Unoccupied;
-
-	// Disable weapon collision
-	if (WeaponBox)
-	{
-		WeaponBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	}
 }
 
 void AEnemy::PlayAttackMontage()
@@ -384,12 +312,6 @@ void AEnemy::OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("OnAttackMontageEnded: Attack montage ended"));
 		ActionState = EActionState::EAS_Unoccupied;
-		
-		if (WeaponBox)
-		{
-			WeaponBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-			UE_LOG(LogTemp, Warning, TEXT("OnAttackMontageEnded: Weapon collision disabled"));
-		}
 		
 		AttackCount = 0;
 	}
@@ -492,12 +414,6 @@ void AEnemy::Die()
 				GetMesh()->bPauseAnims = true;
 			}
 		}, SectionLength, false); // Wait for the full animation to play
-	}
-
-	// Disable weapon collision
-	if (WeaponBox)
-	{
-		WeaponBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	}
 }
 
@@ -662,35 +578,4 @@ void AEnemy::Tick(float DeltaTime)
 	}
 }
 
-void AEnemy::OnWeaponBoxOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
-{
-	// Only process if we're in attacking state
-	if (ActionState != EActionState::EAS_Attacking) return;
-
-	// Check if the other actor is the player and not self
-	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
-	if (OtherActor == PlayerPawn && OtherActor != this)
-	{
-		// Apply damage to the player
-		UGameplayStatics::ApplyDamage(
-			PlayerPawn,
-			AttackDamage,
-			GetController(),
-			this,
-			UDamageType::StaticClass()
-		);
-
-		// Trigger hit reaction if the player implements the hit interface
-		if (IHitInterface* HitInterface = Cast<IHitInterface>(PlayerPawn))
-		{
-			HitInterface->GetHit(SweepResult.ImpactPoint);
-		}
-
-		// Disable weapon collision after hit to prevent multiple hits
-		if (WeaponBox)
-		{
-			WeaponBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		}
-	}
-}
 

@@ -9,8 +9,6 @@ ABaseCharacter::ABaseCharacter()
 	PrimaryActorTick.bCanEverTick = true;
 
 	Attributes = CreateDefaultSubobject<UAttributeComponent>(TEXT("Attributes"));
-	WeaponBox = CreateDefaultSubobject<UBoxComponent>(TEXT("Weapon Box"));
-	WeaponBox->SetupAttachment(GetRootComponent());
 }
 
 void ABaseCharacter::BeginPlay()
@@ -143,11 +141,7 @@ void ABaseCharacter::GetHit(const FVector& ImpactPoint)
 
 void ABaseCharacter::SetWeaponCollisionEnabled(ECollisionEnabled::Type CollisionEnabled)
 {
-	if (WeaponBox)
-	{
-		WeaponBox->SetCollisionEnabled(CollisionEnabled);
-	}
-	
+	// WeaponBox removed - function kept for compatibility but does nothing
 }
 
 

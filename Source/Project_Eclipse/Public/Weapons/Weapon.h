@@ -46,6 +46,9 @@ protected:
 	UFUNCTION()
 	void OnBoxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
+    UFUNCTION()
+    void OnBoxEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+
 	UFUNCTION(BlueprintImplementableEvent)
 	void CreateFields(const FVector& FieldLocation);
 
@@ -56,4 +59,8 @@ public:
 	// Clear the hit actors list (call this when starting a new attack)
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	void ClearHitActors();
+
+private:
+    // Recursively gather all actors attached to the given root actor
+    static void GatherAttachedActorsRecursive(AActor* RootActor, TSet<AActor*>& OutAttached);
 };

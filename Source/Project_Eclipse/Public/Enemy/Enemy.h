@@ -46,7 +46,6 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
-	void WeaponBoxCollision();
 
 	void Die();
 
@@ -70,8 +69,6 @@ protected:
 	UFUNCTION()
 	void OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 
-	UFUNCTION()
-	void OnWeaponBoxOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 	UFUNCTION()
 	void PatrolTimerFinished();
@@ -99,9 +96,6 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	float AttackDamage = 20.f;
 
-	// Socket on the skeletal mesh to attach the enemy WeaponBox to
-	UPROPERTY(EditAnywhere, Category = "Combat")
-	FName WeaponSocketName = FName("RightHandSocket");
 
     // Debug: disable all collisions on this enemy to isolate self-hit issues
     UPROPERTY(EditAnywhere, Category = "Debug")

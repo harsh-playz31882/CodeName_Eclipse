@@ -94,13 +94,6 @@ void AMyCharacter::BeginPlay()
 		
 	}
 	
-	if (WeaponBox && GetMesh())
-	{
-		WeaponBox->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("weapon_r"));
-		WeaponBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		WeaponBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Overlap);
-		WeaponBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
-	}
 
 	
 	KickBoxLeft->OnComponentBeginOverlap.AddDynamic(this, &AMyCharacter::OnKickBoxOverlap);
@@ -346,11 +339,6 @@ void AMyCharacter::AttackEnd()
 	// Clear the hit actors list for the next attack
 	HitActors.Empty();
 	
-	// Disable weapon collision when attack ends
-	if (WeaponBox)
-	{
-		WeaponBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	}
 	
 	// Reset attack count if we've completed the full combo
 	if (AttackCount >= 4)
@@ -435,42 +423,17 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 // Add new functions to enable/disable weapon collision
 void AMyCharacter::EnableWeaponCollision()
 {
-	// Add a small delay to prevent rapid-fire hits
-	FTimerHandle TimerHandle;
-	GetWorld()->GetTimerManager().SetTimer(TimerHandle, [this]()
-	{
-		if (WeaponBox)
-		{
-			WeaponBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-			WeaponBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
-			WeaponBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldDynamic, ECollisionResponse::ECR_Overlap);
-		}
-		UE_LOG(LogTemp, Warning, TEXT("EnableWeaponCollision: Weapon collision enabled after delay"));
-	}, 0.1f, false); // 0.1 second delay
+	// WeaponBox removed - function kept for compatibility but does nothing
 }
 
 void AMyCharacter::DisableWeaponCollision()
 {
-	if (WeaponBox)
-	{
-		WeaponBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	}
+	// WeaponBox removed - function kept for compatibility but does nothing
 }
 
 void AMyCharacter::ClearWeaponHitActors()
 {
-	// Clear weapon hit actors if we have a weapon
-	if (WeaponBox)
-	{
-		// Try to get the weapon actor and clear its hit list
-		if (AActor* WeaponActor = WeaponBox->GetOwner())
-		{
-			if (AWeapon* Weapon = Cast<AWeapon>(WeaponActor))
-			{
-				Weapon->ClearHitActors();
-			}
-		}
-	}
+	// WeaponBox removed - function kept for compatibility but does nothing
 }
 
 void AMyCharacter::InitializeCharacterOverlay()
