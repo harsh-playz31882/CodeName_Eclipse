@@ -45,6 +45,7 @@ public:
 	void Attack3();
 
 	FORCEINLINE ECharacterState GetCharacterState() const { return CharacterState; }
+	FORCEINLINE EActionState GetActionState() const { return ActionState; }
 
 	void EnableKickCollision();
 	void DisableKickCollision();

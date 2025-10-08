@@ -4,6 +4,7 @@
 #include "Enemy/Enemy.h"
 #include "Weapons/Weapon.h"
 #include "Components/BoxComponent.h"
+#include "Engine/Engine.h"
 
 void UANS_EnableWeaponCollision::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float TotalDuration)
 {

@@ -11,6 +11,7 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "Kismet/GameplayStatics.h"
 #include "Weapons/Weapon.h"
+#include "Engine/Engine.h"
 
 
 
@@ -62,6 +63,7 @@ AEnemy::AEnemy()
 	GetCharacterMovement()->RotationRate = FRotator(0.f, 400.f, 0.f);
 	GetCharacterMovement()->bUseRVOAvoidance = true;
 	GetCharacterMovement()->MaxWalkSpeed = 300.f;
+	
 
 	// Disable controller rotation
 	bUseControllerRotationYaw = false;
@@ -160,6 +162,10 @@ void AEnemy::BeginPlay()
 			
 			// Initially disable weapon collision
 			DisableWeaponCollision();
+			if (GEngine)
+			{
+				GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Yellow, TEXT("Enemy: Weapon collision disabled on BeginPlay"));
+			}
 		}
 		else
 		{
@@ -587,8 +593,16 @@ void AEnemy::OnPerceptionUpdated(const TArray<AActor*>& UpdatedActors)
 			{
 				EnemyState = EEnemyState::EES_Chasing;
 				UE_LOG(LogTemp, Warning, TEXT("OnPerceptionUpdated: State changed to Chasing"));
+				if (GEngine)
+				{
+					GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Orange, TEXT("Perception: Chasing player"));
+				}
 			}
 			MoveToTarget(PlayerPawn);
+			if (GEngine)
+			{
+				GEngine->AddOnScreenDebugMessage(-1, 1.5f, FColor::Silver, TEXT("Perception: MoveTo Target (player)"));
+			}
 		}
 	}
 	
@@ -597,6 +611,10 @@ void AEnemy::OnPerceptionUpdated(const TArray<AActor*>& UpdatedActors)
 	{
 		EnemyState = EEnemyState::EES_Patrolling;
 		UE_LOG(LogTemp, Warning, TEXT("OnPerceptionUpdated: State changed to Patrolling"));
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Cyan, TEXT("Perception: Patrolling"));
+		}
 		CheckPatroTarget();
 	}
 }

@@ -8,6 +8,8 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "Kismet/GameplayStatics.h"
 #include "Interfaces/HitInterface.h"
+#include "Engine/Engine.h"
+#include "Characters/CharacterTypes.h"
 
 // Sets default values
 AWeapon::AWeapon()
@@ -37,6 +39,7 @@ void AWeapon::BeginPlay()
 {
 	Super::BeginPlay();
     WeaponBox->OnComponentBeginOverlap.AddDynamic(this, &AWeapon::OnBoxOverlap);
+    // on-screen debug removed
 
 }
 
@@ -93,14 +96,40 @@ void AWeapon::OnBoxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherAct
         return;
     }
 
+    // Require a valid owner and ensure the owner is currently attacking.
+    AActor* OwnerActor = GetOwner();
+    if (!OwnerActor)
+    {
+        // on-screen debug removed
+        return;
+    }
+
+    // Early-out if owner is not in Attacking action state
+    if (const AMyCharacter* OwnerChar = Cast<AMyCharacter>(OwnerActor))
+    {
+        if (OwnerChar->GetActionState() != EActionState::EAS_Attacking)
+        {
+            // on-screen debug removed
+            return;
+        }
+    }
+    else if (const AEnemy* OwnerEnemy = Cast<AEnemy>(OwnerActor))
+    {
+        if (OwnerEnemy->ActionState != AEnemy::EActionState::EAS_Attacking)
+        {
+            // on-screen debug removed
+            return;
+        }
+    }
+
     // Check if the other actor is our owner (prevent self-damage)
-    if (OtherActor == GetOwner())
+    if (OtherActor == OwnerActor)
     {
         return;
     }
 
     // Ignore anything attached to the same owner (e.g., owner's mesh, child actors, equipment)
-    if (AActor* OwnerActor = GetOwner())
+    if (OwnerActor)
     {
         // If the other actor is attached to our owner, ignore
         if (OtherActor->IsAttachedTo(OwnerActor))
@@ -134,7 +163,7 @@ void AWeapon::OnBoxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherAct
     }
 
     // If our owner is a character, also de-duplicate against their per-attack list
-    if (AActor* OwnerActor = GetOwner())
+    if (OwnerActor)
     {
         if (AMyCharacter* OwnerChar = Cast<AMyCharacter>(OwnerActor))
         {
@@ -158,7 +187,7 @@ void AWeapon::OnBoxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherAct
     if (bHit && BoxHit.GetActor())
     {
         // Extra safety: ignore owner and attachments from trace result as well
-        if (AActor* OwnerActor = GetOwner())
+        if (OwnerActor)
         {
             if (BoxHit.GetActor() == OwnerActor || BoxHit.GetActor()->IsAttachedTo(OwnerActor) || OwnerActor->IsAttachedTo(BoxHit.GetActor()))
             {
@@ -175,7 +204,7 @@ void AWeapon::OnBoxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherAct
 
         // Add this actor to our hit list to prevent multiple hits
         HitActors.Add(OtherActor);
-        if (AActor* OwnerActor = GetOwner())
+        if (OwnerActor)
         {
             if (AMyCharacter* OwnerChar = Cast<AMyCharacter>(OwnerActor))
             {
@@ -197,6 +226,8 @@ void AWeapon::OnBoxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherAct
         {
             DamageInstigatorController = OwnerPawn->GetController();
         }
+
+        // on-screen debug removed
 
         UGameplayStatics::ApplyDamage(
             BoxHit.GetActor(),
