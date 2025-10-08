@@ -19,17 +19,18 @@ AEnemy::AEnemy()
 {
 	PrimaryActorTick.bCanEverTick = true;
 	
-	// Set up mesh collision
+	// Set up mesh collision - optimized to prevent self-collision issues
 	if (GetMesh())
 	{
 		GetMesh()->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
 		GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 		GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
-		GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Block);
+		// Changed from ECR_Block to ECR_Ignore for pawns to prevent self-collision with weapon
+		GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
 		GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldDynamic, ECollisionResponse::ECR_Block);
-		GetMesh()->SetGenerateOverlapEvents(true);
+		GetMesh()->SetGenerateOverlapEvents(false); // Disable overlap events on mesh to prevent self-hits
 		GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-		UE_LOG(LogTemp, Warning, TEXT("Enemy: Mesh collision setup complete"));
+		UE_LOG(LogTemp, Warning, TEXT("Enemy: Mesh collision setup complete (optimized for weapon system)"));
 	}
 	else
 	{
@@ -55,7 +56,7 @@ AEnemy::AEnemy()
 	HealthBarWidget1 = CreateDefaultSubobject<UHealthBarComponent>(TEXT("HealthBarWidget1"));
 	HealthBarWidget1->SetupAttachment(GetRootComponent());
 
-	// Set up character movement
+	// Set up character movement - optimized to prevent animation conflicts
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 	GetCharacterMovement()->bUseControllerDesiredRotation = false;
 	GetCharacterMovement()->RotationRate = FRotator(0.f, 400.f, 0.f);
@@ -70,6 +71,8 @@ AEnemy::AEnemy()
 	// Create AI perception component
 	AIPerception = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("AIPerception"));
 
+	// Initialize weapon as null - will be spawned in BeginPlay
+	EquippedWeapon = nullptr;
 }
 
 void AEnemy::BeginPlay()
@@ -132,6 +135,41 @@ void AEnemy::BeginPlay()
 		UE_LOG(LogTemp, Warning, TEXT("AI perception is null"));
 	}
 
+	// Spawn and equip weapon
+	if (WeaponClass)
+	{
+		EquippedWeapon = GetWorld()->SpawnActor<AWeapon>(WeaponClass);
+		if (EquippedWeapon)
+		{
+			// Attach weapon to the enemy's hand socket
+			if (GetMesh()->DoesSocketExist(FName("hand_r")))
+			{
+				EquippedWeapon->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("hand_r"));
+				UE_LOG(LogTemp, Warning, TEXT("Enemy weapon equipped to hand_r socket"));
+			}
+			else
+			{
+				// Fallback: attach to root component
+				EquippedWeapon->AttachToActor(this, FAttachmentTransformRules::KeepWorldTransform);
+				UE_LOG(LogTemp, Warning, TEXT("Enemy weapon equipped to root (no hand_r socket found)"));
+			}
+			
+			// Set the weapon's owner to this enemy
+			EquippedWeapon->SetOwner(this);
+			EquippedWeapon->SetInstigator(this);
+			
+			// Initially disable weapon collision
+			DisableWeaponCollision();
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("Failed to spawn enemy weapon"));
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Enemy WeaponClass is not set"));
+	}
 
 	// Start patrolling
 	MoveToTarget(PatrolTarget);
@@ -246,6 +284,14 @@ void AEnemy::Attack()
 	Super::Attack();
 	ActionState = EActionState::EAS_Attacking;
 
+	// Clear hit actors for new attack
+	HitActors.Empty();
+	ClearWeaponHitActors();
+
+	// Temporarily disable movement rotation to prevent conflicts during attack
+	GetCharacterMovement()->bOrientRotationToMovement = false;
+	GetCharacterMovement()->bUseControllerDesiredRotation = true;
+
 	// Face the player
 	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
 	if (PlayerPawn)
@@ -254,7 +300,7 @@ void AEnemy::Attack()
 		Direction.Z = 0.f;
 		FRotator NewRotation = Direction.Rotation();
 		SetActorRotation(NewRotation);
-		UE_LOG(LogTemp, Warning, TEXT("Attack: Facing player"));
+		UE_LOG(LogTemp, Warning, TEXT("Attack: Facing player and disabled movement rotation"));
 	}
 
 	// Play attack montage
@@ -265,6 +311,16 @@ void AEnemy::AttackEnd()
 {
 	Super::AttackEnd();
 	ActionState = EActionState::EAS_Unoccupied;
+	
+	// Restore movement rotation settings
+	GetCharacterMovement()->bOrientRotationToMovement = true;
+	GetCharacterMovement()->bUseControllerDesiredRotation = false;
+	
+	// Clear the hit actors list for the next attack
+	HitActors.Empty();
+	ClearWeaponHitActors();
+	
+	UE_LOG(LogTemp, Warning, TEXT("Enemy AttackEnd: Restored movement rotation and cleared hit actors"));
 }
 
 void AEnemy::PlayAttackMontage()
@@ -360,6 +416,15 @@ void AEnemy::Die()
 	{
 		EnemyController->StopMovement();
 		EnemyController->UnPossess();
+	}
+
+	// Disable weapon collision and destroy weapon
+	if (EquippedWeapon)
+	{
+		DisableWeaponCollision();
+		EquippedWeapon->Destroy();
+		EquippedWeapon = nullptr;
+		UE_LOG(LogTemp, Warning, TEXT("Enemy Die: Weapon destroyed"));
 	}
 
 	// Disable collision and movement
@@ -517,16 +582,21 @@ void AEnemy::OnPerceptionUpdated(const TArray<AActor*>& UpdatedActors)
 		if (PlayerPawn)
 		{
 			bPlayerSeen = true;
-			// Chase the player
-			EnemyState = EEnemyState::EES_Chasing;
+			// Only change state if not already chasing to prevent rapid transitions
+			if (EnemyState != EEnemyState::EES_Chasing)
+			{
+				EnemyState = EEnemyState::EES_Chasing;
+				UE_LOG(LogTemp, Warning, TEXT("OnPerceptionUpdated: State changed to Chasing"));
+			}
 			MoveToTarget(PlayerPawn);
 		}
 	}
 	
 	// If no player is seen, go back to patrolling
-	if (!bPlayerSeen)
+	if (!bPlayerSeen && EnemyState != EEnemyState::EES_Patrolling)
 	{
 		EnemyState = EEnemyState::EES_Patrolling;
+		UE_LOG(LogTemp, Warning, TEXT("OnPerceptionUpdated: State changed to Patrolling"));
 		CheckPatroTarget();
 	}
 }
@@ -573,9 +643,50 @@ void AEnemy::Tick(float DeltaTime)
 	}
 	else
 	{
-		// Move to target if we're not in range
-		MoveToTarget(PlayerPawn);
+		// Only move to target if we're not already moving to it to prevent excessive calls
+		if (EnemyController && EnemyController->GetMoveStatus() != EPathFollowingStatus::Moving)
+		{
+			MoveToTarget(PlayerPawn);
+		}
 	}
+}
+
+// Weapon collision system implementation
+void AEnemy::SetWeaponCollisionEnabled(ECollisionEnabled::Type CollisionEnabled)
+{
+	if (EquippedWeapon && EquippedWeapon->GetWeaponBox())
+	{
+		EquippedWeapon->GetWeaponBox()->SetCollisionEnabled(CollisionEnabled);
+		UE_LOG(LogTemp, Warning, TEXT("Enemy SetWeaponCollisionEnabled: %s"), 
+			CollisionEnabled == ECollisionEnabled::QueryOnly ? TEXT("Enabled") : TEXT("Disabled"));
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Enemy SetWeaponCollisionEnabled: No equipped weapon or weapon box"));
+	}
+}
+
+void AEnemy::EnableWeaponCollision()
+{
+	SetWeaponCollisionEnabled(ECollisionEnabled::QueryOnly);
+	ClearWeaponHitActors();
+	UE_LOG(LogTemp, Warning, TEXT("Enemy EnableWeaponCollision: Weapon collision enabled"));
+}
+
+void AEnemy::DisableWeaponCollision()
+{
+	SetWeaponCollisionEnabled(ECollisionEnabled::NoCollision);
+	UE_LOG(LogTemp, Warning, TEXT("Enemy DisableWeaponCollision: Weapon collision disabled"));
+}
+
+void AEnemy::ClearWeaponHitActors()
+{
+	if (EquippedWeapon)
+	{
+		EquippedWeapon->ClearHitActors();
+	}
+	HitActors.Empty();
+	UE_LOG(LogTemp, Warning, TEXT("Enemy ClearWeaponHitActors: Cleared weapon hit actors"));
 }
 
 

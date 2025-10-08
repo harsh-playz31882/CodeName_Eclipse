@@ -96,6 +96,17 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	float AttackDamage = 20.f;
 
+	// Weapon collision method (not virtual in base class, so we implement our own)
+	void SetWeaponCollisionEnabled(ECollisionEnabled::Type CollisionEnabled);
+
+	// Weapon collision management
+	void EnableWeaponCollision();
+	void DisableWeaponCollision();
+	void ClearWeaponHitActors();
+
+	// Hit tracking system
+	bool HasAlreadyHit(AActor* Other) const { return HitActors.Contains(Other); }
+	void RecordHit(AActor* Other) { if (Other) { HitActors.AddUnique(Other); } }
 
     // Debug: disable all collisions on this enemy to isolate self-hit issues
     UPROPERTY(EditAnywhere, Category = "Debug")
@@ -147,4 +158,8 @@ private:
 
 	UPROPERTY()
 	int32 AttackCount = 0;
+
+	// Track which actors have been hit during the current attack to prevent multiple hits
+	UPROPERTY()
+	TArray<AActor*> HitActors;
 };

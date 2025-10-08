@@ -3,6 +3,7 @@
 
 #include "Weapons/Weapon.h"
 #include "Characters/MyCharacter.h"
+#include "Enemy/Enemy.h"
 #include "Components/BoxComponent.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Kismet/GameplayStatics.h"
@@ -142,6 +143,13 @@ void AWeapon::OnBoxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherAct
                 return;
             }
         }
+        else if (AEnemy* OwnerEnemy = Cast<AEnemy>(OwnerActor))
+        {
+            if (OwnerEnemy->HasAlreadyHit(OtherActor))
+            {
+                return;
+            }
+        }
     }
 
     FHitResult BoxHit;
@@ -172,6 +180,10 @@ void AWeapon::OnBoxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherAct
             if (AMyCharacter* OwnerChar = Cast<AMyCharacter>(OwnerActor))
             {
                 OwnerChar->RecordHit(OtherActor);
+            }
+            else if (AEnemy* OwnerEnemy = Cast<AEnemy>(OwnerActor))
+            {
+                OwnerEnemy->RecordHit(OtherActor);
             }
         }
         
