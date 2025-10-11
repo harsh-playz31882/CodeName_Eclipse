@@ -43,6 +43,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Components")
 	UHealthBarComponent* HealthBarWidget1;
 
+	// Register with HUD for screen-space health bar
+	void RegisterWithHUD();
+	void UnregisterFromHUD();
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -77,9 +81,6 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 	void CheckPatroTarget();
-
-	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
-	TSubclassOf<AWeapon> WeaponClass;
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
@@ -154,12 +155,5 @@ private:
 	float WaitMax = 10.f;
 
 	UPROPERTY()
-	AWeapon* EquippedWeapon;
-
-	UPROPERTY()
 	int32 AttackCount = 0;
-
-	// Track which actors have been hit during the current attack to prevent multiple hits
-	UPROPERTY()
-	TArray<AActor*> HitActors;
 };

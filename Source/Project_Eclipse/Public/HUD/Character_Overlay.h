@@ -18,6 +18,10 @@ class PROJECT_ECLIPSE_API UCharacter_Overlay : public UUserWidget
 public:
 	void SetHealthBarPercent(float Percent);
 	void SetStaminaBarPercent(float Percent);
+	
+	// Separate methods for enemy health and stamina
+	void SetEnemyHealthBarPercent(float Percent);
+	void SetEnemyStaminaBarPercent(float Percent);
 
 private:
 	UPROPERTY(meta = (BindWidget))
@@ -25,4 +29,10 @@ private:
 
 	UPROPERTY(meta = (BindWidget))
 	class UProgressBar* StaminaProgressBar;
+
+	UPROPERTY(meta = (BindWidget))
+	class UProgressBar* EnemyHealthProgressBar;
+
+	UPROPERTY(meta = (BindWidget))
+	class UProgressBar* EnemyStaminaProgressBar;
 };

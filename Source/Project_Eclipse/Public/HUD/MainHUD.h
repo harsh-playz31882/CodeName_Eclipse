@@ -11,6 +11,7 @@
  */
 
 class UCharacter_Overlay;
+class AEnemy;
 UCLASS()
 class PROJECT_ECLIPSE_API AMainHUD : public AHUD
 {
@@ -25,8 +26,17 @@ private:
 	UPROPERTY()
 	UCharacter_Overlay* Character_Overlay;
 
+	// Currently targeted enemy for health bar display
+	UPROPERTY()
+	AEnemy* TargetedEnemy;
+
 public:
 	FORCEINLINE UCharacter_Overlay* GetCharacterOverlay() const { return Character_Overlay; }
+	
+	// Enemy targeting system
+	void SetTargetedEnemy(AEnemy* Enemy);
+	void ClearTargetedEnemy();
+	AEnemy* GetTargetedEnemy() const { return TargetedEnemy; }
 
 
 	

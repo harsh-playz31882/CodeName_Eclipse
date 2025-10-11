@@ -143,10 +143,6 @@ private:
 
 	int32 AttackCount = 0;
 
-	// Track which actors have been hit during the current attack to prevent multiple hits
-	UPROPERTY()
-	TArray<AActor*> HitActors;
-
 	UFUNCTION()
 	void OnKickBoxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 };

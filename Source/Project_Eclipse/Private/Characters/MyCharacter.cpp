@@ -5,6 +5,8 @@
 #include "Weapons/Weapon.h"
 #include "Components/AttributeComponent.h"
 #include "HUD/MyHUD.h"
+#include "HUD/MainHUD.h"
+#include "Enemy/Enemy.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/DamageType.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -13,7 +15,6 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "Interfaces/HitInterface.h"
 #include "Perception/AIPerceptionComponent.h"
-#include "HUD/MainHUD.h"
 #include "HUD/Character_Overlay.h"
 
 #include "Components/InputComponent.h"
@@ -296,6 +297,18 @@ void AMyCharacter::OnKickBoxOverlap(UPrimitiveComponent* OverlappedComp, AActor*
 
 		// Trigger hit reaction
 		HitInterface->GetHit(SweepResult.ImpactPoint);
+
+		// Set the hit enemy as the targeted enemy for the HUD
+		if (AEnemy* HitEnemy = Cast<AEnemy>(OtherActor))
+		{
+			if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
+			{
+				if (AMainHUD* MainHUD = Cast<AMainHUD>(PlayerController->GetHUD()))
+				{
+					MainHUD->SetTargetedEnemy(HitEnemy);
+				}
+			}
+		}
 		
 		UE_LOG(LogTemp, Warning, TEXT("OnKickBoxOverlap: Hit %s with kick damage"), *OtherActor->GetName());
 	}
@@ -423,17 +436,20 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 // Add new functions to enable/disable weapon collision
 void AMyCharacter::EnableWeaponCollision()
 {
-	// WeaponBox removed - function kept for compatibility but does nothing
+	Super::EnableWeaponCollision();
+	UE_LOG(LogTemp, Warning, TEXT("MyCharacter EnableWeaponCollision: Called"));
 }
 
 void AMyCharacter::DisableWeaponCollision()
 {
-	// WeaponBox removed - function kept for compatibility but does nothing
+	Super::DisableWeaponCollision();
+	UE_LOG(LogTemp, Warning, TEXT("MyCharacter DisableWeaponCollision: Called"));
 }
 
 void AMyCharacter::ClearWeaponHitActors()
 {
-	// WeaponBox removed - function kept for compatibility but does nothing
+	Super::ClearWeaponHitActors();
+	UE_LOG(LogTemp, Warning, TEXT("MyCharacter ClearWeaponHitActors: Called"));
 }
 
 void AMyCharacter::InitializeCharacterOverlay()

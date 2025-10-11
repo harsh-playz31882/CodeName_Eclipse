@@ -4,6 +4,7 @@
 #include "Weapons/Weapon.h"
 #include "Characters/MyCharacter.h"
 #include "Enemy/Enemy.h"
+#include "HUD/MainHUD.h"
 #include "Components/BoxComponent.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Kismet/GameplayStatics.h"
@@ -241,6 +242,18 @@ void AWeapon::OnBoxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherAct
         if (IHitInterface* HitInterface = Cast<IHitInterface>(BoxHit.GetActor()))
         {
             HitInterface->GetHit(BoxHit.ImpactPoint);
+        }
+
+        // Set the hit enemy as the targeted enemy for the HUD if the attacker is a player
+        if (APlayerController* PlayerController = Cast<APlayerController>(DamageInstigatorController))
+        {
+            if (AEnemy* HitEnemy = Cast<AEnemy>(BoxHit.GetActor()))
+            {
+                if (AMainHUD* MainHUD = Cast<AMainHUD>(PlayerController->GetHUD()))
+                {
+                    MainHUD->SetTargetedEnemy(HitEnemy);
+                }
+            }
         }
         
         UE_LOG(LogTemp, Warning, TEXT("OnBoxOverlap: Hit %s with weapon damage"), *BoxHit.GetActor()->GetName());

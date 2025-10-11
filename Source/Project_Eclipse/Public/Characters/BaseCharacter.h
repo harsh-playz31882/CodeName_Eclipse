@@ -50,12 +50,34 @@ protected:
 	UPROPERTY(VisibleAnywhere)
 	UAttributeComponent* Attributes;
 
+public:
+	// Getter for Attributes component
+	FORCEINLINE UAttributeComponent* GetAttributes() const { return Attributes; }
+
 
 	UPROPERTY(EditAnywhere, Category = Sounds)
 	USoundBase* HitSound;
 
 	UPROPERTY(EditAnywhere, Category = VisualEffects)
 	UParticleSystem* HitParticles;
+
+	// Weapon system
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon")
+	TSubclassOf<AWeapon> WeaponClass;
+
+	UPROPERTY(VisibleAnywhere, Category = "Weapon")
+	AWeapon* EquippedWeapon;
+
+	// Weapon collision management
+	virtual void EnableWeaponCollision();
+	virtual void DisableWeaponCollision();
+	virtual void ClearWeaponHitActors();
+
+	// Hit tracking system
+	UPROPERTY()
+	TArray<AActor*> HitActors;
+	bool HasAlreadyHit(AActor* Other) const { return HitActors.Contains(Other); }
+	void RecordHit(AActor* Other) { if (Other) { HitActors.AddUnique(Other); } }
 
 
 

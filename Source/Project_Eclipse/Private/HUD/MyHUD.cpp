@@ -44,5 +44,5 @@ void AMyHUD::UpdateHealthBar(float Percent)
     {
         PlayerHealthBarWidget->SetHealthPercent(Percent);
     }
-   
 }
+

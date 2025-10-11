@@ -5,6 +5,8 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/AttributeComponent.h"
 #include "HUD/HealthBarComponent.h"
+#include "HUD/MainHUD.h"
+#include "HUD/Character_Overlay.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -179,9 +181,7 @@ void AEnemy::BeginPlay()
 
 	// Start patrolling
 	MoveToTarget(PatrolTarget);
-	UE_LOG(LogTemp, Warning, TEXT("Enemy BeginPlay completed"));
 }
-
 
 bool AEnemy::InTargetRange(AActor* Target, double Radius)
 {
@@ -417,6 +417,18 @@ void AEnemy::Die()
 	// Set the death flag
 	bIsDead = true;
 
+	// Clear this enemy from being targeted in the HUD
+	if (APlayerController* PlayerController = Cast<APlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0)))
+	{
+		if (AMainHUD* MainHUD = Cast<AMainHUD>(PlayerController->GetHUD()))
+		{
+			if (MainHUD->GetTargetedEnemy() == this)
+			{
+				MainHUD->ClearTargetedEnemy();
+			}
+		}
+	}
+
 	// Stop any existing movement and AI
 	if (EnemyController)
 	{
@@ -486,6 +498,7 @@ void AEnemy::Die()
 			}
 		}, SectionLength, false); // Wait for the full animation to play
 	}
+	
 }
 
 void AEnemy::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -529,6 +542,18 @@ float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AC
 	{
 		Attributes->ReceiveDamage(DamageAmount);
 		HealthBarWidget1->SetHealthPercent(Attributes->GetHealthPercent());
+		
+		// Update the HUD enemy health bar if this enemy is currently targeted
+		if (APlayerController* PlayerController = Cast<APlayerController>(EventInstigator))
+		{
+			if (AMainHUD* MainHUD = Cast<AMainHUD>(PlayerController->GetHUD()))
+			{
+				if (MainHUD->GetTargetedEnemy() == this)
+				{
+					MainHUD->GetCharacterOverlay()->SetEnemyHealthBarPercent(Attributes->GetHealthPercent());
+				}
+			}
+		}
 		
 		// Only update state and movement if we're not currently attacking
 		if (ActionState != EActionState::EAS_Attacking)
@@ -706,5 +731,7 @@ void AEnemy::ClearWeaponHitActors()
 	HitActors.Empty();
 	UE_LOG(LogTemp, Warning, TEXT("Enemy ClearWeaponHitActors: Cleared weapon hit actors"));
 }
+
+
 
 
