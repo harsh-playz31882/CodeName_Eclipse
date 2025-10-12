@@ -43,9 +43,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Components")
 	UHealthBarComponent* HealthBarWidget1;
 
-	// Register with HUD for screen-space health bar
-	void RegisterWithHUD();
-	void UnregisterFromHUD();
 
 protected:
 	virtual void BeginPlay() override;
@@ -67,8 +64,6 @@ protected:
 	// Add AttackEnd function declaration
 	virtual void AttackEnd();
 
-	// Add montage end delegate function with correct parameters
-	void OnAttackEnd(UAnimMontage* Montage, bool bInterrupted);
 
 	UFUNCTION()
 	void OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted);

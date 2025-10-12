@@ -40,8 +40,18 @@ void AWeapon::BeginPlay()
 {
 	Super::BeginPlay();
     WeaponBox->OnComponentBeginOverlap.AddDynamic(this, &AWeapon::OnBoxOverlap);
-    // on-screen debug removed
-
+    
+    // TEMPORARY FIX: Auto-set owner if not set
+    if (!GetOwner() && GetInstigator())
+    {
+        SetOwner(GetInstigator());
+        GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Yellow, 
+            FString::Printf(TEXT("AUTO-FIX: Weapon owner set to %s"), *GetInstigator()->GetName()));
+    }
+    else if (!GetOwner())
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red, TEXT("AUTO-FIX FAILED: No instigator found"));
+    }
 }
 
 bool AWeapon::BoxTrace(FHitResult& OutHit)
@@ -91,9 +101,14 @@ bool AWeapon::BoxTrace(FHitResult& OutHit)
 
 void AWeapon::OnBoxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
+    // DEBUG: Log all overlap events
+    GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, 
+        FString::Printf(TEXT("Weapon OnBoxOverlap: %s"), OtherActor ? *OtherActor->GetName() : TEXT("NULL")));
+    
     // Check if we have a valid actor and it's not ourselves
     if (!OtherActor || OtherActor == this)
     {
+        GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Red, TEXT("Weapon Overlap: Invalid actor or self"));
         return;
     }
 
@@ -101,24 +116,33 @@ void AWeapon::OnBoxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherAct
     AActor* OwnerActor = GetOwner();
     if (!OwnerActor)
     {
-        // on-screen debug removed
+        GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Red, TEXT("Weapon Overlap: No owner"));
         return;
     }
+    
+    GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Cyan, 
+        FString::Printf(TEXT("Weapon Owner: %s"), *OwnerActor->GetName()));
 
     // Early-out if owner is not in Attacking action state
     if (const AMyCharacter* OwnerChar = Cast<AMyCharacter>(OwnerActor))
     {
+        GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Green, 
+            FString::Printf(TEXT("Player Action State: %d"), (int32)OwnerChar->GetActionState()));
+        
         if (OwnerChar->GetActionState() != EActionState::EAS_Attacking)
         {
-            // on-screen debug removed
+            GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Red, TEXT("Player not attacking - ignoring overlap"));
             return;
         }
     }
     else if (const AEnemy* OwnerEnemy = Cast<AEnemy>(OwnerActor))
     {
+        GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Green, 
+            FString::Printf(TEXT("Enemy Action State: %d"), (int32)OwnerEnemy->ActionState));
+        
         if (OwnerEnemy->ActionState != AEnemy::EActionState::EAS_Attacking)
         {
-            // on-screen debug removed
+            GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Red, TEXT("Enemy not attacking - ignoring overlap"));
             return;
         }
     }

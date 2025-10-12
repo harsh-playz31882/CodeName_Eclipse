@@ -88,9 +88,9 @@ void AMyCharacter::BeginPlay()
 
 	if (MeshComp && MeshComp->GetSkeletalMeshAsset())
 	{
-		if (MeshComp->DoesSocketExist(FName("WeaponSocket")))
+		if (MeshComp->DoesSocketExist(FName("RightHandSocket")))
 		{
-			FVector SocketLocation = MeshComp->GetSocketLocation(FName("WeaponSocket"));
+			FVector SocketLocation = MeshComp->GetSocketLocation(FName("RightHandSocket"));
 		}
 		
 	}
@@ -452,6 +452,48 @@ void AMyCharacter::ClearWeaponHitActors()
 	UE_LOG(LogTemp, Warning, TEXT("MyCharacter ClearWeaponHitActors: Called"));
 }
 
+void AMyCharacter::SetWeaponOwner(AWeapon* Weapon)
+{
+	if (Weapon)
+	{
+		Weapon->SetOwner(this);
+		Weapon->SetInstigator(this);
+		EquippedWeapon = Weapon;
+		
+		// Initially disable weapon collision
+		DisableWeaponCollision();
+		
+		UE_LOG(LogTemp, Warning, TEXT("MyCharacter SetWeaponOwner: Weapon owner set to %s"), *GetName());
+		GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Green, 
+			FString::Printf(TEXT("Player Weapon Owner Set: %s"), *GetName()));
+		
+		// DEBUG: Test if weapon collision can be enabled manually
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Blue, 
+			TEXT("DEBUG: Try pressing 'T' to manually enable weapon collision"));
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("MyCharacter SetWeaponOwner: Weapon is null"));
+		GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red, TEXT("MyCharacter SetWeaponOwner: Weapon is null"));
+	}
+}
+
+void AMyCharacter::TestEnableWeaponCollision()
+{
+	GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Purple, TEXT("MANUAL TEST: Enabling weapon collision"));
+	EnableWeaponCollision();
+	
+	if (EquippedWeapon)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Purple, 
+			FString::Printf(TEXT("MANUAL TEST: Weapon owner is %s"), EquippedWeapon->GetOwner() ? *EquippedWeapon->GetOwner()->GetName() : TEXT("NULL")));
+	}
+	else
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red, TEXT("MANUAL TEST: No equipped weapon"));
+	}
+}
+
 void AMyCharacter::InitializeCharacterOverlay()
 {
 	APlayerController* PlayerController = Cast<APlayerController>(GetController());
@@ -564,11 +606,6 @@ void AMyCharacter::OnHitReactMontageEnded(UAnimMontage* Montage, bool bInterrupt
     }
 }
 
-
-
-
-
-	
 
 
 

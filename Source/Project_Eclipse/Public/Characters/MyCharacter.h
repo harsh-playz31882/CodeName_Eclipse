@@ -61,6 +61,14 @@ public:
 	bool HasAlreadyHit(AActor* Other) const { return HitActors.Contains(Other); }
 	void RecordHit(AActor* Other) { if (Other) { HitActors.AddUnique(Other); } }
 
+	// Blueprint callable function to set up weapon properly
+	UFUNCTION(BlueprintCallable, Category = "Weapon")
+	void SetWeaponOwner(AWeapon* Weapon);
+
+	// DEBUG: Manual weapon collision test
+	UFUNCTION(BlueprintCallable, Category = "Debug")
+	void TestEnableWeaponCollision();
+
 protected:
 	virtual void BeginPlay() override;
 

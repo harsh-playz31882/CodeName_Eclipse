@@ -179,8 +179,9 @@ void AEnemy::BeginPlay()
 		UE_LOG(LogTemp, Warning, TEXT("Enemy WeaponClass is not set"));
 	}
 
-	// Start patrolling
-	MoveToTarget(PatrolTarget);
+	// TEMPORARY: Disabled for weapon collision debugging
+	// Enemy will not start patrolling during debugging
+	// MoveToTarget(PatrolTarget);
 }
 
 bool AEnemy::InTargetRange(AActor* Target, double Radius)
@@ -606,6 +607,11 @@ void AEnemy::CheckPatroTarget()
 
 void AEnemy::OnPerceptionUpdated(const TArray<AActor*>& UpdatedActors)
 {
+	// TEMPORARY: Disabled for weapon collision debugging
+	// Enemy will not react to player detection during debugging
+	return;
+
+	/*
 	bool bPlayerSeen = false;
 	for (AActor* Actor : UpdatedActors)
 	{
@@ -642,12 +648,18 @@ void AEnemy::OnPerceptionUpdated(const TArray<AActor*>& UpdatedActors)
 		}
 		CheckPatroTarget();
 	}
+	*/
 }
 
 void AEnemy::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	// TEMPORARY: Disabled for weapon collision debugging
+	// Enemy will not move or attack during debugging
+	return;
+
+	/*
 	if (EnemyState == EEnemyState::EES_Dead) return;
 
 	if (EnemyState == EEnemyState::EES_Patrolling)
@@ -692,6 +704,7 @@ void AEnemy::Tick(float DeltaTime)
 			MoveToTarget(PlayerPawn);
 		}
 	}
+	*/
 }
 
 // Weapon collision system implementation

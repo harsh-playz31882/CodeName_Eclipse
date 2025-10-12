@@ -9,55 +9,14 @@ ABaseCharacter::ABaseCharacter()
 	PrimaryActorTick.bCanEverTick = true;
 
 	Attributes = CreateDefaultSubobject<UAttributeComponent>(TEXT("Attributes"));
-	
-	// Set default weapon class (can be overridden in Blueprint)
-	static ConstructorHelpers::FClassFinder<AWeapon> WeaponClassFinder(TEXT("/Game/Blueprints/Weapon/BP_Weapon"));
-	if (WeaponClassFinder.Succeeded())
-	{
-		WeaponClass = WeaponClassFinder.Class;
-	}
 }
 
 void ABaseCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// Spawn and equip weapon
-	if (WeaponClass)
-	{
-		EquippedWeapon = GetWorld()->SpawnActor<AWeapon>(WeaponClass);
-		if (EquippedWeapon)
-		{
-			// Attach weapon to the character's weapon socket
-			if (GetMesh()->DoesSocketExist(FName("WeaponSocket")))
-			{
-				EquippedWeapon->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("WeaponSocket"));
-				UE_LOG(LogTemp, Warning, TEXT("BaseCharacter weapon equipped to WeaponSocket"));
-			}
-			else
-			{
-				// Fallback: attach to root component
-				EquippedWeapon->AttachToActor(this, FAttachmentTransformRules::KeepWorldTransform);
-				UE_LOG(LogTemp, Warning, TEXT("BaseCharacter weapon equipped to root (no WeaponSocket found)"));
-			}
-			
-			// Set the weapon's owner to this character
-			EquippedWeapon->SetOwner(this);
-			EquippedWeapon->SetInstigator(this);
-			
-			// Initially disable weapon collision
-			DisableWeaponCollision();
-			UE_LOG(LogTemp, Warning, TEXT("BaseCharacter: Weapon collision disabled on BeginPlay"));
-		}
-		else
-		{
-			UE_LOG(LogTemp, Error, TEXT("Failed to spawn BaseCharacter weapon"));
-		}
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("BaseCharacter WeaponClass is not set"));
-	}
+	// Weapon spawning and attachment is now handled in Blueprint
+	// This allows for custom weapon setup per character blueprint
 }
 
 void ABaseCharacter::Attack()
@@ -204,10 +163,12 @@ void ABaseCharacter::EnableWeaponCollision()
 		EquippedWeapon->GetWeaponBox()->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 		ClearWeaponHitActors();
 		UE_LOG(LogTemp, Warning, TEXT("BaseCharacter EnableWeaponCollision: Weapon collision enabled"));
+		GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Green, TEXT("WEAPON COLLISION ENABLED"));
 	}
 	else
 	{
 		UE_LOG(LogTemp, Warning, TEXT("BaseCharacter EnableWeaponCollision: No equipped weapon or weapon box"));
+		GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red, TEXT("NO WEAPON OR WEAPON BOX"));
 	}
 }
 
@@ -217,10 +178,12 @@ void ABaseCharacter::DisableWeaponCollision()
 	{
 		EquippedWeapon->GetWeaponBox()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		UE_LOG(LogTemp, Warning, TEXT("BaseCharacter DisableWeaponCollision: Weapon collision disabled"));
+		GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Orange, TEXT("WEAPON COLLISION DISABLED"));
 	}
 	else
 	{
 		UE_LOG(LogTemp, Warning, TEXT("BaseCharacter DisableWeaponCollision: No equipped weapon or weapon box"));
+		GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red, TEXT("NO WEAPON OR WEAPON BOX"));
 	}
 }
 
