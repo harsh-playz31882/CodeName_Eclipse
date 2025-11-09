@@ -49,6 +49,9 @@ AMyCharacter::AMyCharacter()
     ViewCamera->FieldOfView = 90.f;
 
 
+
+
+
     // Create kick box components for both legs
     KickBoxLeft = CreateDefaultSubobject<UBoxComponent>(TEXT("Kick Box Left"));
     KickBoxLeft->SetupAttachment(GetMesh(), FName("foot_l"));

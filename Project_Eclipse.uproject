@@ -25,6 +25,10 @@
 		{
 			"Name": "RLPlugin",
 			"Enabled": false
+		},
+		{
+			"Name": "AlembicHairImporter",
+			"Enabled": true
 		}
 	]
 }
